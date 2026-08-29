@@ -179,6 +179,12 @@ async function resumen(conn) {
     console.log('[migrate] Acceso inicial -> NIT 900123456-7 / admin / admin123');
 }
 
-migrarSiHaceFalta();
+// Se ejecuta en segundo plano y NUNCA debe tumbar el proceso: si la migración
+// falla, el servidor debe seguir escuchando para que Render detecte el puerto.
+setImmediate(() => {
+    migrarSiHaceFalta().catch(err => {
+        console.error('[migrate] Fallo no controlado:', err && err.message);
+    });
+});
 
 module.exports = pool;
