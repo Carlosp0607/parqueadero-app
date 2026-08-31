@@ -124,6 +124,16 @@ router.post('/login', validateLoginData, async (req, res) => {
         // Registrar inicio de sesión exitoso
         await logLoginAttempt(id_empresa, usuario, true, ip);
 
+        // Cookie httpOnly para que el SERVIDOR pueda validar la sesión al entregar
+        // las páginas de /admin. El token en localStorage no cambia: lo sigue usando
+        // el navegador para llamar a la API.
+        res.cookie('ps_session', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 8 * 60 * 60 * 1000
+        });
+
         // Enviar respuesta exitosa
         res.json({
             success: true,
@@ -146,6 +156,13 @@ router.post('/login', validateLoginData, async (req, res) => {
             message: 'Error en el servidor'
         });
     }
+});
+
+// Cierre de sesión: borra la cookie del servidor.
+// El localStorage lo limpia el navegador por su lado.
+router.post('/logout', (req, res) => {
+    res.clearCookie('ps_session');
+    res.json({ success: true, message: 'Sesión cerrada' });
 });
 
 module.exports = router;
