@@ -1,164 +1,81 @@
 const express = require('express');
-const router = express.Router();
-const pool = require('../config/db');
-const auth = require('../middleware/auth');
-const { sanitizeIdParam } = require('../utils/sanitize');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
 
-// Middleware de autenticación
-router.use(auth);
-
-async function getTurnoAbierto(id_empresa){
-    const [rows] = await pool.query(
-        'SELECT * FROM turnos WHERE id_empresa=? AND estado="abierto" ORDER BY fecha_apertura DESC LIMIT 1',
-        [id_empresa]
-    );
-    return rows[0] || null;
+// FIX: fallar rápido si falta el secreto en lugar de aceptar tokens con `undefined`
+if (!process.env.JWT_SECRET) {
+    console.error('ERROR: falta JWT_SECRET en el archivo .env. El servidor no puede iniciar.');
+    process.exit(1);
 }
 
-async function getTotalesSistema(id_empresa, fecha_desde, fecha_hasta){
-    const [rows] = await pool.query(
-        `SELECT 
-            SUM(CASE WHEN metodo_pago='efectivo' THEN monto ELSE 0 END) AS efectivo,
-            SUM(CASE WHEN metodo_pago='tarjeta' THEN monto ELSE 0 END) AS tarjeta,
-            SUM(CASE WHEN metodo_pago='QR' THEN monto ELSE 0 END) AS qr,
-            SUM(monto) AS total
-         FROM pagos
-         WHERE id_empresa=? AND fecha_pago BETWEEN ? AND COALESCE(?, NOW())`,
-        [id_empresa, fecha_desde, fecha_hasta || null]
-    );
-    const r = rows[0] || {};
-    return {
-        efectivo: Number(r.efectivo||0),
-        tarjeta: Number(r.tarjeta||0),
-        qr: Number(r.qr||0),
-        total: Number(r.total||0)
-    };
-}
+// Guard de páginas: valida la sesión ANTES de entregar cualquier HTML de /admin.
+// Cierra el punto 5 de la revisión.
+const pageGuard = require('./middleware/pageGuard');
 
-// Función para obtener conteo de tickets por tipo de vehículo
-// Relacionado con: src/routes/turnos.js para reportes de turnos
-async function getConteoTickets(id_empresa, fecha_desde, fecha_hasta){
-    const [rows] = await pool.query(
-        `SELECT tv.codigo as tipo, COUNT(*) as cnt
-         FROM movimientos m
-         JOIN vehiculos v ON v.id_vehiculo = m.id_vehiculo
-         JOIN tipos_vehiculos tv ON v.id_tipo = tv.id_tipo
-         WHERE m.id_empresa=? AND m.estado='finalizado'
-           AND m.fecha_salida BETWEEN ? AND COALESCE(?, NOW())
-         GROUP BY tv.codigo`,
-        [id_empresa, fecha_desde, fecha_hasta || null]
-    );
-    // Crear mapa dinámico basado en los tipos encontrados
-    const map = {};
-    let total = 0;
-    rows.forEach(r=>{ 
-        map[r.tipo] = Number(r.cnt||0);
-        total += Number(r.cnt||0);
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 1. Middlewares
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 2. Archivos estáticos
+app.use(express.static(path.join(__dirname, '../public')));
+
+// 3. Rutas de la API
+// FIX: antes solo se montaban 6 de 12 routers. empresa, mensualidades, dashboard,
+// pagos, tipos-vehiculos y turnos existían pero nunca se registraban -> 404 en el frontend.
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/usuarios', require('./routes/usuarios'));
+app.use('/api/empresa', require('./routes/empresa'));
+app.use('/api/vehiculos', require('./routes/vehiculos'));
+app.use('/api/tipos-vehiculos', require('./routes/tipos-vehiculos'));
+app.use('/api/movimientos', require('./routes/movimientos'));
+app.use('/api/tarifas', require('./routes/tarifas'));
+app.use('/api/pagos', require('./routes/pagos'));
+app.use('/api/mensualidades', require('./routes/mensualidades'));
+app.use('/api/turnos', require('./routes/turnos'));
+app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/reportes', require('./routes/reportes'));
+
+// 4. 404 de API (debe ir DESPUÉS de las rutas y ANTES de las vistas)
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: 'Endpoint no encontrado' });
+});
+
+// 5. Vistas HTML
+// pageGuard va primero: sin cookie de sesión válida, el servidor redirige al login
+// en vez de entregar el HTML del panel.
+app.get('/admin/:page', pageGuard, (req, res) => {
+    // FIX: sanear el parámetro para evitar path traversal (../../ en la URL)
+    const page = path.basename(String(req.params.page)).replace(/\.html$/i, '');
+    if (!/^[a-zA-Z0-9_-]+$/.test(page)) {
+        return res.status(404).sendFile(path.join(__dirname, '../public', '404.html'));
+    }
+    const filePath = path.join(__dirname, '../public', 'admin', `${page}.html`);
+
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            res.status(404).sendFile(path.join(__dirname, '../public', '404.html'), (err404) => {
+                if (err404) res.status(404).send('Página no encontrada');
+            });
+        }
     });
-    return { total, porTipo: map };
-}
-
-// Obtener turno activo de la empresa
-router.get('/actual', async (req, res) => {
-    try{
-        const { id_empresa } = req.user;
-        const t = await getTurnoAbierto(id_empresa);
-        res.json({ success:true, data: t });
-    }catch(err){
-        res.status(500).json({ success:false, message:'Error obteniendo turno' });
-    }
 });
 
-// Resumen de totales del sistema desde la apertura del turno activo
-router.get('/resumen', async (req, res) => {
-    try{
-        const { id_empresa } = req.user;
-        const t = await getTurnoAbierto(id_empresa);
-        if (!t) return res.status(400).json({ success:false, message:'No hay turno abierto' });
-        const tot = await getTotalesSistema(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        const stats = await getConteoTickets(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        res.json({ success:true, data:{ turno:t, totales: tot, stats } });
-    }catch(err){
-        res.status(500).json({ success:false, message:'Error calculando totales' });
-    }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
-// Abrir turno
-router.post('/abrir', async (req, res) => {
-    try{
-        const { id_empresa, id: id_usuario } = req.user;
-        const { base_inicial, observacion_apertura } = req.body;
-        // Validar que no haya uno abierto
-        const [abiertos] = await pool.query(
-            'SELECT id_turno FROM turnos WHERE id_empresa=? AND estado="abierto"',
-            [id_empresa]
-        );
-        if (abiertos.length){
-            return res.status(400).json({ success:false, message:'Ya existe un turno abierto' });
-        }
-        const [result] = await pool.query(
-            'INSERT INTO turnos (id_empresa,id_usuario,base_inicial,observacion_apertura) VALUES (?,?,?,?)',
-            [id_empresa, id_usuario, Number(base_inicial||0), observacion_apertura||null]
-        );
-        res.json({ success:true, data:{ id_turno: result.insertId } });
-    }catch(err){
-        res.status(500).json({ success:false, message:'Error abriendo turno' });
-    }
+// 6. Manejador de errores (4 argumentos: debe ser el último)
+app.use((err, req, res, next) => {
+    console.error('Error no controlado:', err.stack || err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
 });
 
-// Cerrar turno: calcula totales por método en rango [apertura, ahora]
-router.post('/cerrar', async (req, res) => {
-    try{
-        const { id_empresa } = req.user;
-        const { total_efectivo, total_tarjeta, total_qr, total_general, observacion_cierre } = req.body;
-        const t = await getTurnoAbierto(id_empresa);
-        if (!t){
-            return res.status(400).json({ success:false, message:'No hay turno abierto' });
-        }
-        const id_turno = t.id_turno;
-        const expected = await getTotalesSistema(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        const userTotals = {
-            efectivo: Number(total_efectivo||0),
-            tarjeta: Number(total_tarjeta||0),
-            qr: Number(total_qr||0),
-            total: Number(total_general||0)
-        };
-        const diff = Number((userTotals.total - expected.total).toFixed(2));
-        await pool.query(
-            'UPDATE turnos SET fecha_cierre=CURRENT_TIMESTAMP, total_efectivo=?, total_tarjeta=?, total_qr=?, total_general=?, diferencia=?, observacion_cierre=?, estado="cerrado" WHERE id_turno=?',
-            [userTotals.efectivo, userTotals.tarjeta, userTotals.qr, userTotals.total, diff, observacion_cierre||null, id_turno]
-        );
-        const [fresh] = await pool.query('SELECT * FROM turnos WHERE id_turno=?', [id_turno]);
-        const cierre = fresh[0];
-        const stats = await getConteoTickets(id_empresa, t.fecha_apertura, cierre.fecha_cierre);
-        res.json({ success:true, data:{ id_turno, base: t.base_inicial, expected, userTotals, diferencia: diff, stats, turno: { id_turno, usuario: req.user.nombre } } });
-    }catch(err){
-        res.status(500).json({ success:false, message:'Error cerrando turno' });
-    }
+app.listen(PORT, () => {
+    console.log(`ParkSystem corriendo en puerto ${PORT}`);
 });
-
-// Detalle de turno + totales del sistema para reimpresión
-router.get('/detalle/:id', sanitizeIdParam('id'), async (req, res) => {
-    try{
-        const { id_empresa } = req.user;
-        const id_turno = req.params.id;
-        const [rows] = await pool.query(
-            `SELECT t.*, u.nombre AS usuario, u.usuario_login
-             FROM turnos t
-             JOIN usuarios u ON u.id_usuario = t.id_usuario
-             WHERE t.id_empresa=? AND t.id_turno=?`,
-            [id_empresa, id_turno]
-        );
-        if (!rows.length) return res.status(404).json({ success:false, message:'Turno no encontrado' });
-        const t = rows[0];
-        const expected = await getTotalesSistema(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        const stats = await getConteoTickets(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        res.json({ success:true, data:{ turno: t, expected, stats } });
-    }catch(err){
-        res.status(500).json({ success:false, message:'Error obteniendo detalle de turno' });
-    }
-});
-
-module.exports = router;
-
-
