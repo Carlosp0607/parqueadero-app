@@ -9,6 +9,10 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 
+// Guard de páginas: valida la sesión ANTES de entregar cualquier HTML de /admin.
+// Cierra el punto 5 de la revisión.
+const pageGuard = require('./middleware/pageGuard');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -42,7 +46,9 @@ app.use('/api', (req, res) => {
 });
 
 // 5. Vistas HTML
-app.get('/admin/:page', (req, res) => {
+// pageGuard va primero: sin cookie de sesión válida, el servidor redirige al login
+// en vez de entregar el HTML del panel.
+app.get('/admin/:page', pageGuard, (req, res) => {
     // FIX: sanear el parámetro para evitar path traversal (../../ en la URL)
     const page = path.basename(String(req.params.page)).replace(/\.html$/i, '');
     if (!/^[a-zA-Z0-9_-]+$/.test(page)) {
