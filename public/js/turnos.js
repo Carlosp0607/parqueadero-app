@@ -20,7 +20,7 @@
 						'<div id="vistaApertura">',
 							'<div class="mb-3">',
 								'<label class="form-label">Base inicial</label>',
-								'<input type="number" min="0" step="0.01" id="baseInicial" class="form-control" placeholder="0.00" />',
+								'<input type="text" inputmode="numeric" id="baseInicial" class="form-control" placeholder="$ 50.000" autocomplete="off" />',
 							'</div>',
 							'<div class="mb-2">',
 								'<label class="form-label">Observación (opcional)</label>',
@@ -105,11 +105,17 @@
 		return j.data || null;
 	}
 
+	// Los botones quedan siempre habilitados. Si no hay turno abierto, el submit se
+	// intercepta y se abre el modal explicando por que. Un boton deshabilitado y sin
+	// explicacion es lo que la revision reporto en los puntos 2 y 3.
 	function setIngresoSalidaEnabled(enabled){
 		var inBtn = document.querySelector('#formIngreso button[type="submit"]');
 		var outBtn = document.querySelector('#formSalida button[type="submit"]');
-		if (inBtn) inBtn.disabled = !enabled;
-		if (outBtn) outBtn.disabled = !enabled;
+		[inBtn, outBtn].forEach(function(b){
+			if (!b) return;
+			b.disabled = false;
+			b.title = enabled ? '' : 'Debes abrir el turno de caja antes de registrar movimientos';
+		});
 	}
 
 	function updateGuardUI(){
@@ -120,11 +126,16 @@
 				a.__guarded = true;
 			}
 		});
-		// Formularios de ingreso/salida (vista ingreso-salida)
-		document.addEventListener('submit', function(e){
-			var id = (e.target && e.target.id)||'';
-			if ((id==='formIngreso' || id==='formSalida') && !turnoAbierto){ e.preventDefault(); e.stopPropagation(); exigirTurno(); }
-		}, true);
+		// Formularios de ingreso/salida (vista ingreso-salida).
+		// El listener se registra UNA sola vez: updateGuardUI se ejecuta en cada
+		// actualizacion de estado y antes acumulaba un listener por llamada.
+		if (!document.__submitGuardado){
+			document.addEventListener('submit', function(e){
+				var id = (e.target && e.target.id)||'';
+				if ((id==='formIngreso' || id==='formSalida') && !turnoAbierto){ e.preventDefault(); e.stopPropagation(); exigirTurno(); }
+			}, true);
+			document.__submitGuardado = true;
+		}
 		setIngresoSalidaEnabled(turnoAbierto);
 
 		// Indicador en la topbar si existe navbar
@@ -151,7 +162,16 @@
 			else { badge.className = 'ms-2 badge rounded-pill bg-secondary'; badge.textContent = 'Turno cerrado'; }
 		}
 		var quickBtn = document.getElementById('turnoQuickBtn');
-		if (quickBtn){ quickBtn.classList.toggle('d-none', !turnoAbierto); }
+		if (quickBtn){
+			quickBtn.classList.remove('d-none');
+			if (turnoAbierto){
+				quickBtn.className = 'btn btn-outline-danger btn-sm ms-2';
+				quickBtn.innerHTML = '<i class="bi bi-door-closed me-1"></i>Cerrar turno';
+			} else {
+				quickBtn.className = 'btn btn-outline-success btn-sm ms-2';
+				quickBtn.innerHTML = '<i class="bi bi-door-open me-1"></i>Abrir turno';
+			}
+		}
 	}
 
 	async function exigirTurno(){
@@ -171,7 +191,11 @@
 
 	btnAbrir.addEventListener('click', async ()=>{
 		try{
-			const base = Number(document.getElementById('baseInicial').value||0);
+			const base = parsearPesos(document.getElementById('baseInicial').value);
+			if (base === null){
+				showAlert('danger','La base inicial va en pesos enteros, sin decimales. Ejemplo: 50000');
+				return;
+			}
 			const obs = (document.getElementById('obsApertura').value||'').trim();
 			const r = await fetch('/api/turnos/abrir', {
 				method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -334,13 +358,38 @@
 		document.body.appendChild(div.firstChild);
 	}
 	function fmt(n){ return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Number(n||0)); }
+
+	// Convierte lo digitado a un entero de pesos.
+	// Acepta 50000, "50.000", "$ 50.000". Devuelve null si trae decimales o texto.
+	// Cubre el punto 1: la base se digito "2,71" y llegaba mal al servidor.
+	function parsearPesos(valor){
+		var s = String(valor||'').trim().replace(/[$\s]/g, '');
+		if (s === '') return 0;
+		if (/[.,]\d{1,2}$/.test(s)) return null;
+		s = s.replace(/[.,]/g, '');
+		if (!/^\d+$/.test(s)) return null;
+		return parseInt(s, 10);
+	}
 	function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
-	// Gating: bloquear acciones críticas si no hay turno
+	// Consulta el estado del turno y actualiza el indicador. NO abre el modal.
+	async function sincronizarEstadoTurno(){
+		try{
+			const t = await turnoActual();
+			turnoAbierto = !!t;
+		}catch(_){
+			turnoAbierto = false;
+		}
+		updateGuardUI();
+	}
+
+	// Gating: bloquear acciones criticas si no hay turno
 	window.requireOpenShift = exigirTurno;
+	window.sincronizarEstadoTurno = sincronizarEstadoTurno;
 
-	// Mostrar modal si entra al panel sin turno
-	setTimeout(exigirTurno, 200);
+	// El modal ya no aparece solo al entrar a cada modulo (punto 12). Al cargar una
+	// pagina solo se consulta el estado y se pinta el indicador "Turno abierto" o
+	// "Turno cerrado". El modal se abre unicamente cuando el operador intenta
+	// registrar un movimiento sin turno, o cuando pulsa el boton del turno.
+	setTimeout(sincronizarEstadoTurno, 200);
 })();
-
-
