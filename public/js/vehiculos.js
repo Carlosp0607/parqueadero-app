@@ -97,7 +97,8 @@ async function cargarTiposVehiculos() {
         });
 
         if (!response.ok) {
-            throw new Error('Error al cargar los tipos de vehículos');
+            const e = await response.json().catch(() => ({}));
+            throw new Error(e.message || 'No se pudieron cargar los tipos de vehículo');
         }
 
         const result = await response.json();
@@ -141,7 +142,8 @@ async function cargarVehiculos() {
         });
 
         if (!response.ok) {
-            throw new Error('Error al cargar los vehículos');
+            const e = await response.json().catch(() => ({}));
+            throw new Error(e.message || 'No se pudo cargar la lista de vehículos');
         }
 
         const data = await response.json();
@@ -158,7 +160,7 @@ async function cargarVehiculos() {
 async function guardarVehiculo() {
     const vehiculoId = document.getElementById('vehiculoId').value;
     const vehiculo = {
-        placa: document.getElementById('placa').value,
+        placa: document.getElementById('placa').value.trim().toUpperCase(),
         id_tipo: document.getElementById('tipo').value,
         color: document.getElementById('color').value,
         modelo: document.getElementById('modelo').value
@@ -179,11 +181,23 @@ async function guardarVehiculo() {
         });
 
         if (!response.ok) {
-            throw new Error('Error al guardar el vehículo');
+            // El servidor si manda la causa real: "Ya existe un vehiculo con esta placa",
+            // "Tipo de vehiculo no valido o inactivo". Antes se descartaba y se mostraba
+            // un texto generico, asi que el operador reintentaba y duplicaba placas.
+            const e = await response.json().catch(() => ({}));
+            throw new Error(e.message || 'No se pudo guardar el vehículo');
         }
 
         // Cerrar modal y recargar datos
-        $('#vehiculoModal').modal('hide');
+        // A partir de aqui el vehiculo YA quedo guardado. Si algo falla al cerrar el
+        // modal o al refrescar la tabla, no se puede reportar como error de guardado.
+        try {
+            const el = document.getElementById('vehiculoModal');
+            const inst = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+            inst.hide();
+        } catch (e) {
+            console.warn('El vehículo se guardó, pero no se pudo cerrar el modal:', e);
+        }
         cargarVehiculos();
         mostrarExito(vehiculoId ? 'Vehículo actualizado' : 'Vehículo registrado');
 
@@ -203,7 +217,8 @@ async function editarVehiculo(id) {
         });
 
         if (!response.ok) {
-            throw new Error('Error al cargar los datos del vehículo');
+            const e = await response.json().catch(() => ({}));
+            throw new Error(e.message || 'No se pudo cargar el vehículo');
         }
 
         const vehiculo = await response.json();
@@ -242,7 +257,8 @@ async function eliminarVehiculo(id) {
         });
 
         if (!response.ok) {
-            throw new Error('Error al eliminar el vehículo');
+            const e = await response.json().catch(() => ({}));
+            throw new Error(e.message || 'No se pudo eliminar el vehículo');
         }
 
         cargarVehiculos();
@@ -327,7 +343,13 @@ function mostrarError(mensaje) {
 }
 
 // Función para cerrar sesión
-function cerrarSesion() {
+async function cerrarSesion() {
+    // Borra tambien la cookie de sesion en el servidor, no solo el localStorage.
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+        console.warn('No se pudo notificar el cierre de sesión al servidor:', e);
+    }
     localStorage.clear();
     window.location.href = '/';
 }
