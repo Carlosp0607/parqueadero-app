@@ -632,13 +632,23 @@
                     // Actualizar factura con los datos finales (incluye pagosList)
                     const facturaConPagos = j.data;
                     const htmlTicket = renderComprobante('SALIDA', null, facturaConPagos, empresaInfo);
-                    imprimirHTML(htmlTicket, 'Factura de Salida', 80, { t:'salida', e:empresaInfo?.nit, m:facturaConPagos.movimientoId, p:facturaConPagos.placa, fs:facturaConPagos.fechaSalida, total: facturaConPagos.total });
-                    // Persistir la información de pagos en la vista para futuras reimpresiones
+
+                    // La factura se muestra en pantalla y el operador decide si imprime.
+                    // Antes se abria la ventana de impresion sola, en 80mm fijo. Si no
+                    // habia impresora o se cancelaba, el movimiento ya estaba cerrado en
+                    // la base y el ticket se perdia sin forma de recuperarlo.
                     ultimaSalida = facturaConPagos;
                     document.getElementById('compSalidaBody').innerHTML = htmlTicket;
-                    // Asegurar que el comprobante esté visible (por si estaba oculto)
                     document.getElementById('compSalida').classList.remove('d-none');
                     modal.hide();
+
+                    avisar('success', 'Cobro registrado: <strong>' + facturaConPagos.placa + '</strong> por ' + pesos(facturaConPagos.total) + '. La factura quedó abajo, con los botones para imprimir.');
+
+                    // Llevar la vista a la factura para que no quede fuera de pantalla.
+                    setTimeout(function(){
+                        var c = document.getElementById('compSalida');
+                        if (c && c.scrollIntoView) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 150);
                 }catch(err){
                     alert('Error: '+err.message);
                 }
