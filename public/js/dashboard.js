@@ -443,6 +443,7 @@ function imprimirHTML(html, titulo, anchoMM, qrPayload){
         }
         setTimeout(function(){ window.print(); window.close(); }, 400);
     })();<\/script>
+    <script src="../js/menu.js"></script>
     </body></html>`;
     w.document.write(doc);
     w.document.close();
