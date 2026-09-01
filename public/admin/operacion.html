@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operación · ParkSystem</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background:#f2f4f7; }
+  .barra-turno { position:sticky; top:0; z-index:1020; }
+  .panel { background:#fff; border:1px solid #dee2e6; border-radius:.5rem; }
+  .panel-cab { padding:.6rem .9rem; border-bottom:1px solid #dee2e6; font-weight:600; }
+  .panel-cuerpo { padding:.9rem; }
+  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:700; letter-spacing:.06em; }
+  .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
+  .tabla-activos tbody tr { cursor:pointer; }
+  .tabla-activos tbody tr.sel { background:#e7f1ff; }
+  #cobroBox { display:none; }
+  .cobro-total { font-size:1.6rem; font-weight:700; }
+  .deshabilitado { opacity:.5; pointer-events:none; }
+  @media (max-width: 991px){ .barra-turno { position:static; } }
+</style>
+</head>
+<body>
+
+<div class="avisos" id="avisos"></div>
+
+<!-- BARRA DE TURNO -->
+<div class="barra-turno bg-dark text-white py-2 mb-3">
+  <div class="container-fluid d-flex flex-wrap align-items-center gap-3">
+    <span class="fw-bold">ParkSystem</span>
+    <span class="ms-auto d-flex align-items-center gap-2">
+      <span class="badge bg-secondary" id="badgeTurno">Consultando…</span>
+      <small class="text-white-50" id="infoTurno"></small>
+    </span>
+    <button class="btn btn-sm btn-success" id="btnTurno" disabled>…</button>
+    <a class="btn btn-sm btn-outline-light" href="/admin/dashboard">Panel</a>
+  </div>
+</div>
+
+<div class="container-fluid pb-5">
+  <div class="row g-3">
+
+    <!-- INGRESO -->
+    <div class="col-lg-3">
+      <div class="panel h-100">
+        <div class="panel-cab bg-light">Registrar ingreso</div>
+        <div class="panel-cuerpo" id="zonaIngreso">
+          <label class="form-label small">Tipo de vehículo</label>
+          <select class="form-select mb-3" id="inTipo"></select>
+
+          <label class="form-label small">Placa</label>
+          <input class="form-control placa mb-3 text-uppercase" id="inPlaca" maxlength="10" autocomplete="off" placeholder="ABC123">
+
+          <button class="btn btn-primary w-100" id="btnIngresar">Ingresar vehículo</button>
+          <div class="form-text mt-2" id="ayudaIngreso">El turno debe estar abierto.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADENTRO AHORA -->
+    <div class="col-lg-6">
+      <div class="panel h-100">
+        <div class="panel-cab bg-light d-flex align-items-center">
+          <span>Adentro ahora</span>
+          <span class="badge bg-primary ms-2" id="contActivos">0</span>
+          <input class="form-control form-control-sm ms-auto" style="max-width:12rem" id="filtroActivos" placeholder="Filtrar placa">
+          <button class="btn btn-sm btn-outline-secondary ms-2" id="btnRefrescar">Refrescar</button>
+        </div>
+        <div class="panel-cuerpo p-0">
+          <div class="table-responsive" style="max-height:26rem; overflow:auto">
+            <table class="table table-sm table-hover mb-0 align-middle tabla-activos">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th>Placa</th><th>Tipo</th><th>Entrada</th><th>Tiempo</th><th class="text-end">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyActivos">
+                <tr><td colspan="5" class="text-center text-muted py-4">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SALIDA -->
+    <div class="col-lg-3">
+      <div class="panel h-100">
+        <div class="panel-cab bg-light">Registrar salida</div>
+        <div class="panel-cuerpo" id="zonaSalida">
+          <label class="form-label small">Placa</label>
+          <input class="form-control placa mb-2 text-uppercase" id="outPlaca" list="listaPlacas" maxlength="10" autocomplete="off" placeholder="Selecciona o escribe">
+          <datalist id="listaPlacas"></datalist>
+
+          <button class="btn btn-outline-primary w-100 mb-3" id="btnCalcular">Calcular cobro</button>
+
+          <div id="cobroBox" class="border rounded p-2 mb-3 bg-light">
+            <div class="d-flex justify-content-between small"><span>Placa</span><span class="placa" id="cbPlaca">-</span></div>
+            <div class="d-flex justify-content-between small"><span>Entrada</span><span id="cbEntrada">-</span></div>
+            <div class="d-flex justify-content-between small"><span>Tiempo</span><span id="cbTiempo">-</span></div>
+            <div class="d-flex justify-content-between small mb-2"><span>Tarifa</span><span id="cbTarifa">-</span></div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="small">Total</span><span class="cobro-total" id="cbTotal">$ 0</span>
+            </div>
+
+            <label class="form-label small mt-3">Método de pago</label>
+            <select class="form-select form-select-sm mb-2" id="outMetodo">
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="nequi">Nequi / Daviplata</option>
+              <option value="breb">Bre-B</option>
+            </select>
+
+            <button class="btn btn-success w-100" id="btnFinalizar">Confirmar salida y cobro</button>
+          </div>
+
+          <div class="form-text" id="ayudaSalida">El turno debe estar abierto.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL DEL DÍA -->
+    <div class="col-12">
+      <div class="panel">
+        <div class="panel-cab bg-light d-flex align-items-center">
+          <span>Movimientos de hoy</span>
+          <span class="ms-auto small text-muted" id="resumenDia"></span>
+        </div>
+        <div class="panel-cuerpo p-0">
+          <div class="table-responsive" style="max-height:20rem; overflow:auto">
+            <table class="table table-sm mb-0">
+              <thead class="table-light sticky-top">
+                <tr><th>Hora</th><th>Evento</th><th>Placa</th><th>Tiempo</th><th>Método</th><th class="text-end">Valor</th></tr>
+              </thead>
+              <tbody id="tbodyHistorial">
+                <tr><td colspan="6" class="text-center text-muted py-4">Sin movimientos registrados hoy.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- COMPROBANTE -->
+<div class="modal fade" id="modalComprobante" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Comprobante</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="cuerpoComprobante"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">Imprimir</button>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ============================================================
+   CFG - Rutas de API. Si alguna no coincide con el backend,
+   se cambia SOLO aquí. Nada más en el archivo las repite.
+   ============================================================ */
+const CFG = {
+  turnoActual : '/api/turnos/actual',
+  turnoAbrir  : '/api/turnos/abrir',
+  turnoCerrar : '/api/turnos/cerrar',
+  tipos       : '/api/tipos-vehiculo',
+  activos     : '/api/movimientos/activos',
+  ingreso     : '/api/movimientos/ingreso',
+  salida      : '/api/movimientos/salida',
+  historial   : '/api/movimientos/historial'   // opcional: si no existe, se arma en memoria
+};
+
+/* ---------- utilidades ---------- */
+const $ = id => document.getElementById(id);
+
+function pesos(v){
+  const n = Math.round(Number(v) || 0);
+  return '$ ' + n.toLocaleString('es-CO', { maximumFractionDigits:0 });
+}
+
+function hora(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  if(isNaN(d)) return String(iso);
+  return d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+
+function textoTiempo(det, entradaISO){
+  if(det && typeof det === 'object'){
+    const d = det.dias|0, h = det.horas|0, m = det.minutos|0;
+    const p = [];
+    if(d) p.push(d + (d===1?' día':' días'));
+    if(h) p.push(h + ' h');
+    if(m || !p.length) p.push(m + ' min');
+    return p.join(' ');
+  }
+  if(entradaISO){
+    const ms = Date.now() - new Date(entradaISO).getTime();
+    if(ms >= 0){
+      const min = Math.floor(ms/60000);
+      const h = Math.floor(min/60), m = min%60;
+      return h ? `${h} h ${m} min` : `${m} min`;
+    }
+  }
+  return '-';
+}
+
+function avisar(tipo, texto){
+  const clase = { ok:'success', error:'danger', info:'primary', alerta:'warning' }[tipo] || 'secondary';
+  const el = document.createElement('div');
+  el.className = `alert alert-${clase} alert-dismissible shadow-sm py-2`;
+  el.innerHTML = `<div class="small">${texto}</div>
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+  $('avisos').appendChild(el);
+  setTimeout(() => { el.classList.remove('show'); el.remove(); }, tipo==='error' ? 9000 : 4500);
+}
+
+/* Lee SIEMPRE el message real del servidor. Nunca texto genérico. */
+async function api(url, opciones = {}){
+  const headers = { 'Accept':'application/json', ...(opciones.headers||{}) };
+  if(opciones.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const tok = localStorage.getItem('token') || localStorage.getItem('ps_token');
+  if(tok) headers['Authorization'] = 'Bearer ' + tok;
+
+  let res, cuerpo, crudo = '';
+  try{
+    res = await fetch(url, { ...opciones, headers, credentials:'include' });
+    crudo = await res.text();
+    try { cuerpo = crudo ? JSON.parse(crudo) : {}; } catch { cuerpo = { message: crudo }; }
+  }catch(e){
+    throw new Error('No hay conexión con el servidor. ' + e.message);
+  }
+
+  if(res.status === 401 || res.status === 403){
+    throw new Error(cuerpo.message || cuerpo.error || 'La sesión expiró. Vuelve a entrar.');
+  }
+  if(!res.ok){
+    console.error('API', url, res.status, cuerpo);
+    throw new Error(cuerpo.message || cuerpo.error || `El servidor respondió ${res.status}.`);
+  }
+  return cuerpo;
+}
+
+/* Extrae el arreglo venga como venga: [], {data:[]}, {movimientos:[]}, {activos:[]} */
+function lista(r){
+  if(Array.isArray(r)) return r;
+  for(const k of ['data','movimientos','activos','rows','resultados','items','historial']){
+    if(Array.isArray(r?.[k])) return r[k];
+  }
+  return [];
+}
+function campo(o, claves, def=null){
+  for(const k of claves) if(o && o[k] !== undefined && o[k] !== null) return o[k];
+  return def;
+}
+
+/* ---------- estado ---------- */
+const S = { turno:null, abierto:false, activos:[], cobro:null, historial:[] };
+
+/* ---------- turno ---------- */
+async function sincronizarTurno(){
+  try{
+    const r = await api(CFG.turnoActual);
+    const t = r.turno || r.data || r;
+    const abierto = !!(t && (t.id || t.id_turno)) &&
+                    String(campo(t,['estado'],'abierto')).toLowerCase() === 'abierto';
+    S.turno = abierto ? t : null;
+    S.abierto = abierto;
+  }catch(e){
+    S.turno = null; S.abierto = false;
+    console.warn('turno:', e.message);
+  }
+  pintarTurno();
+}
+
+function pintarTurno(){
+  const b = $('badgeTurno'), btn = $('btnTurno');
+  if(S.abierto){
+    b.className = 'badge bg-success'; b.textContent = 'Turno abierto';
+    const base = campo(S.turno, ['base_inicial','baseInicial','base'], null);
+    $('infoTurno').textContent =
+      'Abrió ' + hora(campo(S.turno,['fecha_apertura','hora_apertura','created_at'])) +
+      (base !== null ? ' · base ' + pesos(base) : '');
+    btn.className = 'btn btn-sm btn-danger'; btn.textContent = 'Cerrar turno'; btn.disabled = false;
+  }else{
+    b.className = 'badge bg-warning text-dark'; b.textContent = 'Turno cerrado';
+    $('infoTurno').textContent = '';
+    btn.className = 'btn btn-sm btn-success'; btn.textContent = 'Abrir turno'; btn.disabled = false;
+  }
+  $('zonaIngreso').classList.toggle('deshabilitado', !S.abierto);
+  $('zonaSalida').classList.toggle('deshabilitado', !S.abierto);
+  const ayuda = S.abierto ? '' : 'El turno debe estar abierto.';
+  $('ayudaIngreso').textContent = ayuda;
+  $('ayudaSalida').textContent = ayuda;
+}
+
+$('btnTurno').addEventListener('click', async () => {
+  const btn = $('btnTurno'); btn.disabled = true;
+  try{
+    if(!S.abierto){
+      const txt = prompt('Base inicial de caja en pesos (ej. 50000):', '50000');
+      if(txt === null){ btn.disabled = false; return; }
+      const base = parseInt(String(txt).replace(/[^\d]/g,''), 10);
+      if(!Number.isFinite(base)) throw new Error('La base debe ser un número entero en pesos.');
+      await api(CFG.turnoAbrir, { method:'POST', body: JSON.stringify({ base_inicial: base, baseInicial: base }) });
+      avisar('ok','Turno abierto con base ' + pesos(base) + '.');
+    }else{
+      if(!confirm('¿Cerrar el turno? No podrás registrar más movimientos hasta abrir uno nuevo.')){
+        btn.disabled = false; return;
+      }
+      const r = await api(CFG.turnoCerrar, { method:'POST', body: JSON.stringify({}) });
+      const total = campo(r.turno||r.data||r, ['total_recaudado','totalRecaudado','total'], null);
+      avisar('ok','Turno cerrado.' + (total!==null ? ' Recaudado: ' + pesos(total) : ''));
+    }
+    await sincronizarTurno();
+    await cargarActivos();
+  }catch(e){ avisar('error', e.message); }
+  finally{ $('btnTurno').disabled = false; }
+});
+
+/* ---------- tipos de vehículo ---------- */
+async function cargarTipos(){
+  const sel = $('inTipo');
+  try{
+    const r = await api(CFG.tipos);
+    const arr = lista(r);
+    if(!arr.length) throw new Error('No hay tipos de vehículo configurados.');
+    sel.innerHTML = arr.map(t => {
+      const id = campo(t,['id','id_tipo','id_tipo_vehiculo']);
+      const nom = campo(t,['nombre','descripcion','tipo'],'Tipo ' + id);
+      return `<option value="${id}">${nom}</option>`;
+    }).join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">No se pudieron cargar</option>';
+    avisar('error','Tipos de vehículo: ' + e.message);
+  }
+}
+
+/* ---------- activos ---------- */
+async function cargarActivos(){
+  try{
+    const r = await api(CFG.activos);
+    S.activos = lista(r);
+  }catch(e){
+    S.activos = [];
+    avisar('error','Adentro ahora: ' + e.message);
+  }
+  pintarActivos();
+}
+
+function pintarActivos(){
+  const q = $('filtroActivos').value.trim().toUpperCase();
+  const filtrados = S.activos.filter(m =>
+    !q || String(campo(m,['placa'],'')).toUpperCase().includes(q));
+
+  $('contActivos').textContent = S.activos.length;
+  $('listaPlacas').innerHTML = S.activos
+    .map(m => `<option value="${campo(m,['placa'],'')}">`).join('');
+
+  const tb = $('tbodyActivos');
+  if(!filtrados.length){
+    tb.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">${
+      S.activos.length ? 'Ninguna placa coincide con el filtro.' : 'No hay vehículos adentro.'
+    }</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = filtrados.map(m => {
+    const placa = campo(m,['placa'],'-');
+    const tipo  = campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'-');
+    const ent   = campo(m,['fecha_entrada','hora_entrada','entrada','created_at']);
+    return `<tr data-placa="${placa}">
+      <td class="placa">${placa}</td>
+      <td>${tipo}</td>
+      <td>${hora(ent)}</td>
+      <td>${textoTiempo(null, ent)}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-success btn-fila" data-placa="${placa}">Salida</button>
+      </td></tr>`;
+  }).join('');
+
+  tb.querySelectorAll('.btn-fila').forEach(b => {
+    b.addEventListener('click', ev => {
+      ev.stopPropagation();
+      $('outPlaca').value = b.dataset.placa;
+      calcularCobro();
+      document.getElementById('zonaSalida').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    });
+  });
+  tb.querySelectorAll('tr[data-placa]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      tb.querySelectorAll('tr').forEach(x => x.classList.remove('sel'));
+      tr.classList.add('sel');
+      $('outPlaca').value = tr.dataset.placa;
+    });
+  });
+}
+
+$('filtroActivos').addEventListener('input', pintarActivos);
+$('btnRefrescar').addEventListener('click', cargarActivos);
+
+/* ---------- ingreso ---------- */
+$('inPlaca').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+$('inPlaca').addEventListener('keydown', e => { if(e.key === 'Enter') $('btnIngresar').click(); });
+
+$('btnIngresar').addEventListener('click', async () => {
+  const btn = $('btnIngresar');
+  const placa = $('inPlaca').value.trim().toUpperCase();
+  const tipo  = $('inTipo').value;
+
+  if(!S.abierto)      return avisar('alerta','Abre el turno antes de registrar ingresos.');
+  if(placa.length < 3) return avisar('alerta','Escribe la placa del vehículo.');
+  if(!tipo)            return avisar('alerta','Selecciona el tipo de vehículo.');
+  if(S.activos.some(m => String(campo(m,['placa'],'')).toUpperCase() === placa))
+    return avisar('alerta', placa + ' ya está adentro.');
+
+  btn.disabled = true; btn.textContent = 'Registrando…';
+  try{
+    const r = await api(CFG.ingreso, { method:'POST', body: JSON.stringify({
+      placa, id_tipo_vehiculo: tipo, tipo_vehiculo: tipo, id_tipo: tipo
+    })});
+    const mov = r.movimiento || r.data || r;
+    avisar('ok','Ingresó ' + placa + ' a las ' +
+      hora(campo(mov,['fecha_entrada','hora_entrada','entrada'], new Date().toISOString())) + '.');
+    agregarHistorial({
+      hora: campo(mov,['fecha_entrada','hora_entrada','entrada'], new Date().toISOString()),
+      evento:'Ingreso', placa, tiempo:'-', metodo:'-', valor:null
+    });
+    $('inPlaca').value = '';
+    $('inPlaca').focus();
+    await cargarActivos();
+  }catch(e){ avisar('error', e.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Ingresar vehículo'; }
+});
+
+/* ---------- salida: calcular ---------- */
+$('outPlaca').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase();
+  $('cobroBox').style.display = 'none';
+  S.cobro = null;
+});
+$('outPlaca').addEventListener('keydown', e => { if(e.key === 'Enter') calcularCobro(); });
+$('btnCalcular').addEventListener('click', calcularCobro);
+
+async function calcularCobro(){
+  const placa = $('outPlaca').value.trim().toUpperCase();
+  if(!S.abierto) return avisar('alerta','Abre el turno antes de registrar salidas.');
+  if(!placa)     return avisar('alerta','Escribe o selecciona la placa.');
+
+  const mov = S.activos.find(m => String(campo(m,['placa'],'')).toUpperCase() === placa);
+  if(!mov) return avisar('alerta', placa + ' no aparece adentro. Verifica la placa.');
+
+  const btn = $('btnCalcular'); btn.disabled = true; btn.textContent = 'Calculando…';
+  try{
+    const id = campo(mov,['id','id_movimiento']);
+    let prev = null;
+    try{ prev = await api('/api/movimientos/detalle/' + id); }catch(_){}
+    const d = (prev && (prev.movimiento || prev.data || prev)) || mov;
+
+    const ent    = campo(d,['fecha_entrada','hora_entrada','entrada','created_at']);
+    const det    = campo(d,['detalleTiempo','detalle_tiempo']);
+    const tarifa = campo(d,['tarifa']);
+    const total  = campo(d,['total','valor_total','valor','monto'], null);
+
+    S.cobro = { id, placa, entrada:ent, total: total !== null ? Number(total) : null };
+
+    $('cbPlaca').textContent   = placa;
+    $('cbEntrada').textContent = hora(ent);
+    $('cbTiempo').textContent  = textoTiempo(det, ent);
+    $('cbTarifa').textContent  = tarifa
+      ? (campo(tarifa,['nombre','descripcion'],'') + ' ' +
+         (campo(tarifa,['valor_hora','valorHora'],null) !== null
+            ? pesos(campo(tarifa,['valor_hora','valorHora'])) + '/h' : '')).trim()
+      : '-';
+    $('cbTotal').textContent   = total !== null ? pesos(total) : 'Se calcula al confirmar';
+    $('cobroBox').style.display = 'block';
+  }catch(e){ avisar('error', e.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Calcular cobro'; }
+}
+
+/* ---------- salida: confirmar ---------- */
+$('btnFinalizar').addEventListener('click', async () => {
+  if(!S.cobro) return avisar('alerta','Calcula el cobro antes de confirmar.');
+  const btn = $('btnFinalizar');
+  const metodo = $('outMetodo').value;
+
+  btn.disabled = true; btn.textContent = 'Registrando…';
+  try{
+    const r = await api(CFG.salida, { method:'POST', body: JSON.stringify({
+      id_movimiento: S.cobro.id, id: S.cobro.id,
+      placa: S.cobro.placa,
+      metodo_pago: metodo, metodoPago: metodo
+    })});
+    const s = r.movimiento || r.salida || r.data || r;
+
+    const total  = campo(s,['total','valor_total','valor','monto'], S.cobro.total ?? 0);
+    const det    = campo(s,['detalleTiempo','detalle_tiempo']);
+    const sal    = campo(s,['fecha_salida','hora_salida','salida'], new Date().toISOString());
+    const tiempo = textoTiempo(det, S.cobro.entrada);
+
+    avisar('ok','Salida de ' + S.cobro.placa + ' registrada. Cobro ' + pesos(total) + '.');
+    agregarHistorial({ hora:sal, evento:'Salida', placa:S.cobro.placa, tiempo, metodo, valor:total });
+
+    mostrarComprobante({
+      placa:S.cobro.placa, entrada:S.cobro.entrada, salida:sal, tiempo, metodo, total
+    });
+
+    $('outPlaca').value = '';
+    $('cobroBox').style.display = 'none';
+    S.cobro = null;
+    await cargarActivos();
+  }catch(e){ avisar('error', e.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Confirmar salida y cobro'; }
+});
+
+/* ---------- comprobante ---------- */
+function mostrarComprobante(c){
+  $('cuerpoComprobante').innerHTML = `
+    <table class="table table-sm mb-0">
+      <tr><th>Placa</th><td class="placa">${c.placa}</td></tr>
+      <tr><th>Entrada</th><td>${hora(c.entrada)}</td></tr>
+      <tr><th>Salida</th><td>${hora(c.salida)}</td></tr>
+      <tr><th>Tiempo</th><td>${c.tiempo}</td></tr>
+      <tr><th>Método</th><td>${$('outMetodo').selectedOptions[0]?.textContent || c.metodo}</td></tr>
+      <tr class="table-light"><th>Total</th><td class="fw-bold fs-5">${pesos(c.total)}</td></tr>
+    </table>`;
+  bootstrap.Modal.getOrCreateInstance($('modalComprobante')).show();
+}
+
+/* ---------- historial del día ---------- */
+function agregarHistorial(item){
+  S.historial.unshift(item);
+  pintarHistorial();
+}
+
+async function cargarHistorial(){
+  try{
+    const hoy = new Date().toISOString().slice(0,10);
+    const r = await api(CFG.historial + '?fecha=' + hoy);
+    const arr = lista(r);
+    if(arr.length){
+      S.historial = arr.map(m => {
+        const salida = campo(m,['fecha_salida','hora_salida','salida']);
+        const val    = campo(m,['total','valor_total','valor'], null);
+        return {
+          hora: salida || campo(m,['fecha_entrada','hora_entrada','entrada']),
+          evento: salida ? 'Salida' : 'Ingreso',
+          placa: campo(m,['placa'],'-'),
+          tiempo: textoTiempo(campo(m,['detalleTiempo','detalle_tiempo'])),
+          metodo: campo(m,['metodo_pago','metodoPago'],'-'),
+          valor: val !== null ? Number(val) : null
+        };
+      });
+    }
+  }catch(e){
+    console.warn('historial:', e.message);   // endpoint opcional, no molesta al operador
+  }
+  pintarHistorial();
+}
+
+function pintarHistorial(){
+  const tb = $('tbodyHistorial');
+  if(!S.historial.length){
+    tb.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Sin movimientos registrados hoy.</td></tr>';
+    $('resumenDia').textContent = '';
+    return;
+  }
+  tb.innerHTML = S.historial.map(h => `
+    <tr>
+      <td>${hora(h.hora)}</td>
+      <td>${h.evento === 'Salida'
+            ? '<span class="badge bg-success">Salida</span>'
+            : '<span class="badge bg-secondary">Ingreso</span>'}</td>
+      <td class="placa">${h.placa}</td>
+      <td>${h.tiempo || '-'}</td>
+      <td>${h.metodo || '-'}</td>
+      <td class="text-end">${h.valor !== null && h.valor !== undefined ? pesos(h.valor) : '-'}</td>
+    </tr>`).join('');
+
+  const sal = S.historial.filter(h => h.evento === 'Salida');
+  const tot = sal.reduce((a,h) => a + (Number(h.valor) || 0), 0);
+  $('resumenDia').textContent =
+    `${S.historial.filter(h=>h.evento==='Ingreso').length} ingresos · ${sal.length} salidas · recaudado ${pesos(tot)}`;
+}
+
+/* ---------- arranque ---------- */
+(async function init(){
+  await sincronizarTurno();   // solo consulta y pinta. NO abre modal.
+  await cargarTipos();
+  await cargarActivos();
+  await cargarHistorial();
+  setInterval(cargarActivos, 60000);
+  $('inPlaca').focus();
+})();
+</script>
+</body>
+</html>
