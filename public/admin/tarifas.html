@@ -11,26 +11,20 @@
     <script>
         if (!localStorage.getItem('token')) { window.location.href = '/'; }
     </script>
+    <style>
+      .campo-precio input { font-size:1.25rem; font-weight:600; }
+      .campo-precio .input-group-text { font-weight:600; }
+      .eco { min-height:1.2rem; font-size:.85rem; }
+      .opcion-modo { cursor:pointer; }
+      .opcion-modo input { margin-right:.5rem; }
+      .opcion-modo.activa { border-color:#0d6efd; background:#f0f6ff; }
+      .resumen { background:#f8f9fa; border-left:4px solid #0d6efd; }
+    </style>
 </head>
 <body>
+    <!-- El contenido real lo escribe public/js/menu.js. Este btnLogout
+         queda para que los scripts antiguos no fallen al buscarlo. -->
     <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo-container"><div class="logo-circle"><span class="logo-text">PS</span></div></div>
-            <h5 class="mt-3 text-white">ParkSystem</h5>
-        </div>
-        <nav class="sidebar-nav">
-            <ul class="nav flex-column">
-                <li class="nav-item"><a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-                <li class="nav-item"><a href="vehiculos.html" class="nav-link"><i class="fas fa-car"></i><span>Vehículos</span></a></li>
-                <li class="nav-item"><a href="ingreso-salida.html" class="nav-link"><i class="fas fa-right-left"></i><span>Ingreso / Salida</span></a></li>
-                <li class="nav-item"><a href="mensualidades.html" class="nav-link"><i class="fas fa-calendar-check"></i><span>Mensualidades</span></a></li>
-                <li class="nav-item admin-only"><a href="configuracion.html" class="nav-link"><i class="fas fa-gear"></i><span>Configuración</span></a></li>
-                <li class="nav-item admin-only"><a href="tipos-vehiculos.html" class="nav-link"><i class="fas fa-tags"></i><span>Tipos de Vehículos</span></a></li>
-                <li class="nav-item admin-only"><a href="tarifas.html" class="nav-link active"><i class="fas fa-money-bill-wave"></i><span>Tarifas</span></a></li>
-                <li class="nav-item admin-only"><a href="usuarios.html" class="nav-link"><i class="fas fa-users"></i><span>Usuarios</span></a></li>
-                <li class="nav-item admin-only"><a href="reportes.html" class="nav-link"><i class="fas fa-chart-bar"></i><span>Reportes</span></a></li>
-            </ul>
-        </nav>
         <div class="sidebar-footer"><a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span></a></div>
     </div>
 
@@ -44,85 +38,177 @@
 
         <div class="container py-4">
             <div class="row g-4">
-                <!-- Form por tipo de vehículo -->
+
                 <div class="col-12 col-xl-8">
-                    <div class="card">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0">Configurar Tarifas</h5>
-                            <!-- Botón de ayuda (abre modal). Relacionado con este mismo archivo y con Bootstrap (no requiere JS adicional) -->
-                            <button type="button" class="btn btn-outline-secondary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ayudaTarifasModal">
-                                <i class="fas fa-circle-question me-1"></i>Ayuda
+                    <form id="tarifaForm">
+
+                        <!-- PASO 1 -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold">¿Para qué vehículo?</label>
+                                <select id="tipo_vehiculo" class="form-select form-select-lg" required>
+                                    <option value="">Cargando tipos...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- PASO 2 -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold mb-3">¿Cómo se cobra?</label>
+
+                                <div class="row g-2" id="modosCobro">
+                                    <div class="col-6 col-md-3">
+                                        <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="minuto">
+                                            <input type="radio" name="modoUI" value="minuto">
+                                            <span class="fw-semibold">Por minuto</span>
+                                            <div class="text-muted small">Paga lo que estuvo</div>
+                                        </label>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="hora">
+                                            <input type="radio" name="modoUI" value="hora">
+                                            <span class="fw-semibold">Por hora</span>
+                                            <div class="text-muted small">Lo más común</div>
+                                        </label>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="dia">
+                                            <input type="radio" name="modoUI" value="dia">
+                                            <span class="fw-semibold">Por día</span>
+                                            <div class="text-muted small">Estadías largas</div>
+                                        </label>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="mixto">
+                                            <input type="radio" name="modoUI" value="mixto">
+                                            <span class="fw-semibold">Combinado</span>
+                                            <div class="text-muted small">Cambia según el rato</div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <select id="modo_cobro" class="d-none">
+                                    <option value="mixto">Mixto</option>
+                                    <option value="minuto">Por minuto</option>
+                                    <option value="hora">Por hora</option>
+                                    <option value="dia">Por día</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- PASO 3 -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold mb-3">¿Cuánto cobra?</label>
+
+                                <div class="row g-3">
+                                    <div class="col-md-4 campo-precio" id="wrapMinuto">
+                                        <label class="form-label small text-muted">Cada minuto</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="1" id="valor_minuto" class="form-control" value="0">
+                                        </div>
+                                        <div class="eco text-muted" id="ecoMinuto"></div>
+                                    </div>
+
+                                    <div class="col-md-4 campo-precio" id="wrapHora">
+                                        <label class="form-label small text-muted">Cada hora</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="1" id="valor_hora" class="form-control" value="0">
+                                        </div>
+                                        <div class="eco text-muted" id="ecoHora"></div>
+                                    </div>
+
+                                    <div class="col-md-4 campo-precio" id="wrapDia">
+                                        <label class="form-label small text-muted">Cada día</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="1" id="valor_dia_completo" class="form-control" value="0">
+                                        </div>
+                                        <div class="eco text-muted" id="ecoDia"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PASO 4: solo en combinado -->
+                        <div class="card mb-3" id="cardCombinado">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold mb-3">¿Cuándo cambia de precio?</label>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Cobra por minuto hasta los</label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" step="1" id="paso_minutos_a_horas" class="form-control" value="0">
+                                            <span class="input-group-text">minutos</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Después cobra por hora hasta las</label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" step="1" id="paso_horas_a_dias" class="form-control" value="0">
+                                            <span class="input-group-text">horas</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2">Pasadas esas horas, se cobra por día.</div>
+                            </div>
+                        </div>
+
+                        <!-- PASO 5 -->
+                        <div class="card mb-3" id="cardRedondeo">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold mb-3">¿Cómo cuenta las fracciones?</label>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6" id="wrapRedHoras">
+                                        <label class="form-label small text-muted">Si lleva 1 hora y 5 minutos…</label>
+                                        <select id="redondeo_horas" class="form-select">
+                                            <option value="arriba">Cobra 2 horas completas</option>
+                                            <option value="exacto">Cobra solo 1 hora</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6" id="wrapRedDias">
+                                        <label class="form-label small text-muted">Si lleva 1 día y unas horas…</label>
+                                        <select id="redondeo_dias" class="form-select">
+                                            <option value="arriba">Cobra 2 días completos</option>
+                                            <option value="exacto">Cobra solo 1 día</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RESUMEN -->
+                        <div class="card mb-3 resumen">
+                            <div class="card-body">
+                                <div class="text-muted small mb-1">Así va a quedar</div>
+                                <div id="resumenTarifa">Escoge un vehículo para empezar.</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>Guardar tarifa
                             </button>
                         </div>
-                        <div class="card-body">
-                            <form id="tarifaForm" class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label">Tipo de vehículo</label>
-                                    <!-- Selector dinámico de tipos. Relacionado con: src/routes/tipos-vehiculos.js GET /api/tipos-vehiculos/activos -->
-                                    <select id="tipo_vehiculo" class="form-select" required>
-                                        <option value="">Cargando tipos...</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Modo de cobro</label>
-                                    <select id="modo_cobro" class="form-select">
-                                        <option value="mixto">Mixto</option>
-                                        <option value="minuto">Por minuto</option>
-                                        <option value="hora">Por hora</option>
-                                        <option value="dia">Por día</option>
-                                    </select>
-                                </div>
-                                <div class="col-12"><hr></div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Valor minuto</label>
-                                    <input type="number" min="0" step="0.01" id="valor_minuto" class="form-control" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Valor hora</label>
-                                    <input type="number" min="0" step="0.01" id="valor_hora" class="form-control" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Valor día</label>
-                                    <input type="number" min="0" step="0.01" id="valor_dia_completo" class="form-control" required>
-                                </div>
-                                <div class="col-12"><hr></div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Hasta (min) cobrar por minuto</label>
-                                    <input type="number" min="0" step="1" id="paso_minutos_a_horas" class="form-control" value="0">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Luego (horas) cobrar por hora antes de día</label>
-                                    <input type="number" min="0" step="1" id="paso_horas_a_dias" class="form-control" value="0">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Redondeo de horas</label>
-                                    <select id="redondeo_horas" class="form-select">
-                                        <option value="arriba">Arriba (ceil)</option>
-                                        <option value="exacto">Exacto</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Redondeo de días</label>
-                                    <select id="redondeo_dias" class="form-select">
-                                        <option value="arriba">Arriba (ceil)</option>
-                                        <option value="exacto">Exacto</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Guardar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+
+                    </form>
                 </div>
+
+                <!-- TARIFAS ACTIVAS -->
                 <div class="col-12 col-xl-4">
                     <div class="card">
-                        <div class="card-header bg-white"><h5 class="mb-0">Tarifas activas</h5></div>
+                        <div class="card-header bg-white"><h6 class="mb-0">Tarifas guardadas</h6></div>
                         <div class="card-body">
                             <ul class="list-group" id="listaTarifas"></ul>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -131,81 +217,121 @@
         <div id="toastContainer"></div>
     </div>
 
-    <!-- Modal de Ayuda de Tarifas -->
-    <!-- Explica configuraciones de modo mixto y redondeos. Solo HTML+Bootstrap; no altera lógica existente. -->
-    <div class="modal fade" id="ayudaTarifasModal" tabindex="-1" aria-labelledby="ayudaTarifasLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="ayudaTarifasLabel"><i class="fas fa-circle-question me-2"></i>Ayuda para configurar Tarifas</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Sección: Modos de cobro -->
-                    <h6 class="mb-2">Modos de cobro</h6>
-                    <ul class="mb-3">
-                        <li><strong>Por minuto</strong>: se cobra <em>valor minuto</em> por cada minuto estacionado.</li>
-                        <li><strong>Por hora</strong>: se cobra <em>valor hora</em> por el total de horas (ver redondeo).</li>
-                        <li><strong>Por día</strong>: se cobra <em>valor día</em> por cada día completo (ver redondeo).</li>
-                        <li><strong>Mixto</strong>: combina por minuto, por hora y por día según umbrales definidos abajo.</li>
-                    </ul>
-
-                    <!-- Sección: Mixto -->
-                    <h6 class="mb-2">Modo Mixto</h6>
-                    <p class="mb-1">El modo <strong>mixto</strong> utiliza los siguientes pasos:</p>
-                    <ol class="mb-3">
-                        <li><strong>Hasta (min) cobrar por minuto</strong> (<code>paso_minutos_a_horas</code>): si el tiempo total es menor o igual a este valor, todo se cobra por minuto.</li>
-                        <li><strong>Luego (horas) cobrar por hora antes de día</strong> (<code>paso_horas_a_dias</code>): si supera los minutos anteriores, hasta este número de horas se cobra por hora (aplica <em>redondeo de horas</em>).</li>
-                        <li>Si el tiempo excede esas horas, el resto pasa a cobrarse por día (aplica <em>redondeo de días</em>).</li>
-                    </ol>
-                    <div class="alert alert-info py-2">
-                        <div class="mb-1"><strong>Ejemplo Mixto</strong></div>
-                        <div>
-                            Suponga: minuto=$100, hora=$2.000, día=$15.000, <em>hasta (min)</em>=30, <em>luego (horas)</em>=5, redondeo horas=Arriba, redondeo días=Arriba.
-                            <br>Si el vehículo estuvo <strong>1h 10m</strong>:
-                            <br>- Supera 30 min ⇒ no es solo por minuto.
-                            <br>- Está dentro de 5 horas ⇒ se cobra por hora con redondeo: 1h10m ⇒ <strong>2 horas</strong> ⇒ $4.000.
-                        </div>
-                    </div>
-
-                    <!-- Sección: Redondeo -->
-                    <h6 class="mb-2">Redondeo</h6>
-                    <ul class="mb-3">
-                        <li><strong>Redondeo de horas</strong>:
-                            <ul>
-                                <li><em>Arriba (ceil)</em>: cualquier fracción de hora sube a la siguiente hora. Ej.: 1h 01m ⇒ 2h.</li>
-                                <li><em>Exacto</em>: se cobra solo horas completas; los minutos fuera de hora pueden entrar como minuto (en mixto) o no cobrar si solo-hora.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Redondeo de días</strong>:
-                            <ul>
-                                <li><em>Arriba (ceil)</em>: cualquier fracción de día sube al siguiente día.</li>
-                                <li><em>Exacto</em>: se cobra día completo solo cuando se completa el día; el resto puede ir por horas/minutos en mixto.</li>
-                            </ul>
-                        </li>
-                    </ul>
-
-                    <div class="alert alert-secondary py-2">
-                        <div class="mb-1"><strong>Consejos</strong></div>
-                        <ul class="mb-0">
-                            <li>Use <em>mixto</em> para escenarios realistas: minutos para estancias cortas, horas para medias, días para largas.</li>
-                            <li>Si desea evitar cobros muy bajos, use redondeo <em>Arriba</em> en horas y/o días.</li>
-                            <li>Ajuste los <em>pasos</em> según la operación (ej.: 30 min a horas, 5 horas a días).</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Footer global (reutilizable). Relacionado con public/js/footer.js -->
     <script src="../js/footer.js"></script>
     <script src="../js/tarifas.js"></script>
     <script src="../js/menu.js"></script>
+    <script>
+    /* ------------------------------------------------------------
+       Solo maneja la vista. No toca el envio: eso sigue en tarifas.js.
+       Todos los id originales se conservan.
+       ------------------------------------------------------------ */
+    (function () {
+      'use strict';
+
+      var $ = function (id) { return document.getElementById(id); };
+
+      function pesos(v) {
+        var n = Math.round(Number(v) || 0);
+        return '$ ' + n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+      }
+
+      function modoActual() { return $('modo_cobro').value || 'mixto'; }
+
+      function mostrar(el, visible) {
+        if (!el) return;
+        el.classList.toggle('d-none', !visible);
+        el.querySelectorAll('input, select').forEach(function (c) {
+          c.disabled = !visible;   // deshabilitado no se envia ni bloquea la validacion
+        });
+      }
+
+      function aplicarModo(modo) {
+        $('modo_cobro').value = modo;
+
+        document.querySelectorAll('.opcion-modo').forEach(function (l) {
+          var activa = l.dataset.modo === modo;
+          l.classList.toggle('activa', activa);
+          var r = l.querySelector('input');
+          if (r) r.checked = activa;
+        });
+
+        mostrar($('wrapMinuto'), modo === 'minuto' || modo === 'mixto');
+        mostrar($('wrapHora'),   modo === 'hora'   || modo === 'mixto');
+        mostrar($('wrapDia'),    modo === 'dia'    || modo === 'mixto');
+
+        $('cardCombinado').classList.toggle('d-none', modo !== 'mixto');
+        $('cardCombinado').querySelectorAll('input').forEach(function (c) {
+          c.disabled = (modo !== 'mixto');
+        });
+
+        mostrar($('wrapRedHoras'), modo === 'hora' || modo === 'mixto');
+        mostrar($('wrapRedDias'),  modo === 'dia'  || modo === 'mixto');
+        $('cardRedondeo').classList.toggle('d-none', modo === 'minuto');
+
+        pintarResumen();
+      }
+
+      document.querySelectorAll('.opcion-modo').forEach(function (l) {
+        l.addEventListener('click', function () { aplicarModo(l.dataset.modo); });
+      });
+
+      // Si tarifas.js carga una tarifa existente y cambia el select oculto.
+      $('modo_cobro').addEventListener('change', function () { aplicarModo(this.value); });
+
+      function pintarResumen() {
+        var tipo = $('tipo_vehiculo');
+        var nom  = tipo.selectedIndex >= 0 ? tipo.options[tipo.selectedIndex].text : '';
+        if (!tipo.value) { $('resumenTarifa').textContent = 'Escoge un vehículo para empezar.'; return; }
+
+        var modo = modoActual();
+        var min  = Number($('valor_minuto').value) || 0;
+        var hor  = Number($('valor_hora').value) || 0;
+        var dia  = Number($('valor_dia_completo').value) || 0;
+        var pMin = Number($('paso_minutos_a_horas').value) || 0;
+        var pHor = Number($('paso_horas_a_dias').value) || 0;
+
+        var t = '';
+        if (modo === 'minuto') {
+          t = 'A cada ' + nom + ' se le cobra ' + pesos(min) + ' por minuto.';
+        } else if (modo === 'hora') {
+          t = 'A cada ' + nom + ' se le cobra ' + pesos(hor) + ' por hora.';
+        } else if (modo === 'dia') {
+          t = 'A cada ' + nom + ' se le cobra ' + pesos(dia) + ' por día.';
+        } else {
+          t = 'A cada ' + nom + ': los primeros ' + pMin + ' minutos a ' + pesos(min) +
+              ' cada uno. De ahí hasta las ' + pHor + ' horas, ' + pesos(hor) +
+              ' la hora. Pasadas esas horas, ' + pesos(dia) + ' el día.';
+        }
+        $('resumenTarifa').textContent = t;
+      }
+
+      function eco(idInput, idEco, sufijo) {
+        var i = $(idInput), e = $(idEco);
+        if (!i || !e) return;
+        var refrescar = function () {
+          var v = Number(i.value) || 0;
+          e.textContent = v > 0 ? pesos(v) + sufijo : '';
+          pintarResumen();
+        };
+        i.addEventListener('input', refrescar);
+        refrescar();
+      }
+
+      eco('valor_minuto',       'ecoMinuto', ' por minuto');
+      eco('valor_hora',         'ecoHora',   ' por hora');
+      eco('valor_dia_completo', 'ecoDia',    ' por día');
+
+      ['tipo_vehiculo','paso_minutos_a_horas','paso_horas_a_dias','redondeo_horas','redondeo_dias']
+        .forEach(function (id) {
+          var el = $(id);
+          if (el) { el.addEventListener('input', pintarResumen); el.addEventListener('change', pintarResumen); }
+        });
+
+      // Estado inicial. Se reevalua tras un momento por si tarifas.js precarga datos.
+      aplicarModo($('modo_cobro').value || 'hora');
+      setTimeout(function () { aplicarModo($('modo_cobro').value || 'hora'); }, 800);
+    })();
+    </script>
 </body>
 </html>
-
