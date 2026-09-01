@@ -9,22 +9,31 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="../css/dashboard.css" rel="stylesheet">
 <style>
-  .panel { background:#fff; border:1px solid #dee2e6; border-radius:.5rem; }
-  .panel-cab { padding:.7rem 1rem; border-bottom:1px solid #dee2e6; font-weight:600; }
-  .panel-cuerpo { padding:1rem; }
-  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:700; letter-spacing:.06em; }
-  .punto { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
-  .punto.on  { background:#198754; box-shadow:0 0 0 3px rgba(25,135,84,.18); }
-  .punto.off { background:#adb5bd; }
-  .cifra { font-size:2rem; font-weight:700; line-height:1.1; }
-  .cifra-sm { font-size:1.3rem; font-weight:700; }
-  .rotulo { font-size:.85rem; color:#6c757d; }
-  .nota { font-size:.8rem; color:#adb5bd; }
-  .barra-cupo { height:.4rem; border-radius:.2rem; background:#e9ecef; overflow:hidden; }
-  .barra-cupo > div { height:100%; background:#0d6efd; }
-  .barra-cupo.lleno > div { background:#dc3545; }
-  .tipo-fila { display:flex; align-items:center; gap:.75rem; padding:.5rem 0; }
-  .tipo-fila + .tipo-fila { border-top:1px solid #f1f3f5; }
+  .lienzo { max-width:1100px; }
+  .rotulo { font-size:.8rem; color:#8a94a0; letter-spacing:.02em; }
+  .cifra { font-size:3rem; font-weight:600; line-height:1; letter-spacing:-.02em; }
+  .cifra-sub { font-size:.8rem; color:#adb5bd; margin-top:.35rem; }
+  .separador { border-left:1px solid #e9ecef; }
+  .titulo-seccion { font-size:.9rem; font-weight:600; color:#495057; }
+  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:600; letter-spacing:.05em; }
+  .punto { width:.5rem; height:.5rem; border-radius:50%; display:inline-block; }
+  .punto.on  { background:#198754; }
+  .punto.off { background:#ced4da; }
+  .vacio { padding:3rem 1rem; text-align:center; color:#adb5bd; }
+  table.limpia { --bs-table-bg:transparent; }
+  table.limpia th {
+    font-weight:500; font-size:.75rem; color:#8a94a0;
+    text-transform:uppercase; letter-spacing:.04em;
+    border-bottom:1px solid #e9ecef; padding-bottom:.5rem;
+  }
+  table.limpia td { padding:.6rem 0; border-bottom:1px solid #f5f6f8; }
+  table.limpia tr:last-child td { border-bottom:0; }
+  .chip { font-size:.8rem; color:#6c757d; }
+  .chip + .chip::before { content:'·'; margin:0 .5rem; color:#dee2e6; }
+  @media (max-width: 767px){
+    .separador { border-left:0; border-top:1px solid #e9ecef; padding-top:1rem; margin-top:1rem; }
+    .cifra { font-size:2.25rem; }
+  }
 </style>
 </head>
 <body>
@@ -37,135 +46,63 @@
 
 <div class="main-content">
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white">
     <div class="container-fluid">
       <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
-      <span class="ms-2 d-flex align-items-center gap-2">
+      <span class="ms-2 d-flex align-items-center gap-2 small text-muted">
         <span class="punto off" id="puntoTurno"></span>
-        <span class="small" id="textoTurno">Consultando…</span>
+        <span id="textoTurno">Consultando…</span>
       </span>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
-          <span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span>
+          <span class="nav-link small"><span id="userName">Usuario</span></span>
         </li>
       </ul>
     </div>
   </nav>
 
-  <div class="container-fluid py-4">
+  <div class="container py-5 lienzo">
 
-    <div class="d-flex align-items-baseline flex-wrap gap-2 mb-3">
-      <h5 class="mb-0" id="saludo">Resumen de hoy</h5>
-      <span class="nota" id="fechaHoy"></span>
-      <span class="nota ms-auto" id="actualizado"></span>
+    <div class="mb-5">
+      <h4 class="mb-1" id="saludo">Hola</h4>
+      <div class="text-muted small" id="fechaHoy"></div>
     </div>
 
-    <!-- CIFRAS -->
-    <div class="row g-3 mb-4">
-      <div class="col-6 col-xl-3">
-        <div class="panel h-100">
-          <div class="panel-cuerpo">
-            <div class="rotulo">Adentro ahora</div>
-            <div class="cifra" id="cAdentro">–</div>
-            <div class="barra-cupo mt-2" id="barraCupo"><div style="width:0%"></div></div>
-            <div class="nota mt-1" id="notaCupo">&nbsp;</div>
-          </div>
+    <!-- TRES CIFRAS -->
+    <div class="row mb-5">
+      <div class="col-md-4 mb-4 mb-md-0">
+        <div class="rotulo">Adentro ahora</div>
+        <div class="cifra" id="cAdentro">–</div>
+        <div class="cifra-sub" id="subAdentro">&nbsp;</div>
+      </div>
+      <div class="col-md-4 separador mb-4 mb-md-0">
+        <div class="ps-md-4">
+          <div class="rotulo">Recaudado hoy</div>
+          <div class="cifra text-success" id="cRecaudo">–</div>
+          <div class="cifra-sub" id="subRecaudo">&nbsp;</div>
         </div>
       </div>
-
-      <div class="col-6 col-xl-3">
-        <div class="panel h-100">
-          <div class="panel-cuerpo">
-            <div class="rotulo">Recaudado hoy</div>
-            <div class="cifra text-success" id="cRecaudo">–</div>
-            <div class="nota mt-2" id="notaRecaudo">&nbsp;</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-6 col-xl-3">
-        <div class="panel h-100">
-          <div class="panel-cuerpo">
-            <div class="rotulo">Atendidos hoy</div>
-            <div class="cifra" id="cAtendidos">–</div>
-            <div class="nota mt-2">Vehículos que ya salieron</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-6 col-xl-3">
-        <div class="panel h-100">
-          <div class="panel-cuerpo">
-            <div class="rotulo">Deja cada uno</div>
-            <div class="cifra" id="cPromedio">–</div>
-            <div class="nota mt-2">Promedio por vehículo</div>
-          </div>
+      <div class="col-md-4 separador">
+        <div class="ps-md-4">
+          <div class="rotulo">Debe haber en caja</div>
+          <div class="cifra" id="cCaja">–</div>
+          <div class="cifra-sub" id="subCaja">&nbsp;</div>
         </div>
       </div>
     </div>
 
-    <div class="row g-3">
-
-      <!-- POR TIPO -->
-      <div class="col-12 col-xl-4">
-        <div class="panel h-100">
-          <div class="panel-cab bg-light">Qué hay adentro</div>
-          <div class="panel-cuerpo" id="porTipo">
-            <div class="text-muted small">Cargando…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ÚLTIMOS -->
-      <div class="col-12 col-xl-8">
-        <div class="panel h-100">
-          <div class="panel-cab bg-light">Últimos en entrar</div>
-          <div class="panel-cuerpo p-0">
-            <div class="table-responsive" style="max-height:22rem; overflow:auto">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
-                  <tr><th>Placa</th><th>Tipo</th><th>Entró</th><th class="text-end">Lleva</th></tr>
-                </thead>
-                <tbody id="tbodyUltimos">
-                  <tr><td colspan="4" class="text-center text-muted py-4">Cargando…</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TURNO -->
-      <div class="col-12 col-xl-4">
-        <div class="panel h-100">
-          <div class="panel-cab bg-light">Caja del turno</div>
-          <div class="panel-cuerpo" id="cajaTurno">
-            <div class="text-muted small">Cargando…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- MENSUALIDADES -->
-      <div class="col-12 col-xl-4">
-        <div class="panel h-100">
-          <div class="panel-cab bg-light">Planes</div>
-          <div class="panel-cuerpo" id="panelPlanes">
-            <div class="text-muted small">Cargando…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CONFIGURACIÓN -->
-      <div class="col-12 col-xl-4">
-        <div class="panel h-100">
-          <div class="panel-cab bg-light">El parqueadero</div>
-          <div class="panel-cuerpo" id="panelEmpresa">
-            <div class="text-muted small">Cargando…</div>
-          </div>
-        </div>
-      </div>
-
+    <!-- QUIÉN ESTÁ ADENTRO -->
+    <div class="mb-2 d-flex align-items-baseline flex-wrap gap-2">
+      <span class="titulo-seccion">Quién está adentro</span>
+      <span class="ms-auto" id="chips"></span>
     </div>
+
+    <div id="zonaTabla">
+      <div class="vacio">Cargando…</div>
+    </div>
+
+    <div class="text-muted small mt-4" id="pie"></div>
+
   </div>
 </div>
 
@@ -179,11 +116,7 @@ const CFG = {
   stats       : '/api/dashboard/stats',
   turnoActual : '/api/turnos/actual',
   turnoResumen: '/api/turnos/resumen',
-  activos     : '/api/movimientos/activos',
-  tipos       : ['/api/tipos-vehiculos/activos', '/api/tipos-vehiculos', '/api/tipos-vehiculo'],
-  empresa     : '/api/empresa/me',
-  config      : '/api/empresa/config',
-  mensualidades: ['/api/mensualidades', '/api/planes']
+  activos     : '/api/movimientos/activos'
 };
 
 const $ = id => document.getElementById(id);
@@ -205,40 +138,30 @@ function textoTiempo(desde){
   return h ? `${h} h ${m} min` : `${m} min`;
 }
 
-async function api(url, opciones = {}){
-  const headers = { 'Accept':'application/json', ...(opciones.headers||{}) };
+async function api(url){
+  const headers = { 'Accept':'application/json' };
   const tok = localStorage.getItem('token') || localStorage.getItem('ps_token');
   if(tok) headers['Authorization'] = 'Bearer ' + tok;
 
   let res, cuerpo;
   try{
-    res = await fetch(url, { ...opciones, headers, credentials:'include' });
+    res = await fetch(url, { headers, credentials:'include' });
     const crudo = await res.text();
-    try { cuerpo = crudo ? JSON.parse(crudo) : {}; } catch { cuerpo = { message: crudo }; }
-  }catch(e){ throw new Error('Sin conexión con el servidor.'); }
+    try { cuerpo = crudo ? JSON.parse(crudo) : {}; } catch { cuerpo = {}; }
+  }catch(e){ throw new Error('Sin conexión.'); }
 
   if(!res.ok){
     console.warn('API', url, res.status, cuerpo);
-    const err = new Error(cuerpo.message || cuerpo.error || ('Respondió ' + res.status));
-    err.status = res.status;
-    throw err;
+    throw new Error(cuerpo.message || cuerpo.error || ('Respondió ' + res.status));
   }
   return cuerpo;
 }
-async function apiPrimera(rutas){
-  let ultimo;
-  for(const r of rutas){
-    try { return await api(r); }
-    catch(e){ ultimo = e; if(e.status && e.status !== 404) throw e; }
-  }
-  throw ultimo || new Error('Sin respuesta.');
-}
 function lista(r){
   if(Array.isArray(r)) return r;
-  for(const k of ['data','movimientos','activos','rows','resultados','items','tipos','mensualidades'])
+  for(const k of ['data','movimientos','activos','rows','items'])
     if(Array.isArray(r?.[k])) return r[k];
   if(r?.data && typeof r.data === 'object')
-    for(const k of ['movimientos','rows','items','mensualidades'])
+    for(const k of ['movimientos','rows','items'])
       if(Array.isArray(r.data[k])) return r.data[k];
   return [];
 }
@@ -246,20 +169,14 @@ function campo(o, claves, def=null){
   for(const k of claves) if(o && o[k] !== undefined && o[k] !== null) return o[k];
   return def;
 }
-function vacio(cont, texto){
-  cont.innerHTML = '<div class="text-muted small">' + texto + '</div>';
-}
 
-/* ---------- fecha ---------- */
+/* ---------- saludo ---------- */
 (function(){
   const d = new Date();
-  $('fechaHoy').textContent = d.toLocaleDateString('es-CO',
-    { weekday:'long', day:'numeric', month:'long' });
   const h = d.getHours();
   $('saludo').textContent = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
-})();
-
-(function(){
+  $('fechaHoy').textContent = d.toLocaleDateString('es-CO',
+    { weekday:'long', day:'numeric', month:'long' });
   try{
     const u = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || 'null');
     const n = u && (u.nombre || u.usuario || u.username || u.nombre_usuario);
@@ -267,8 +184,8 @@ function vacio(cont, texto){
   }catch(e){}
 })();
 
-/* ---------- turno ---------- */
-let TURNO = null, ABIERTO = false, RESUMEN = null;
+/* ---------- estado ---------- */
+let ABIERTO = false, TURNO = null, RESUMEN = null, ACTIVOS = [];
 
 function recaudadoTurno(){
   const r = RESUMEN?.data || RESUMEN || {};
@@ -280,7 +197,8 @@ function recaudadoTurno(){
   return 0;
 }
 
-async function cargarTurno(){
+async function cargar(){
+  // Turno
   try{
     const r = await api(CFG.turnoActual);
     const t = r.turno || r.data || r;
@@ -289,228 +207,116 @@ async function cargarTurno(){
     TURNO = ABIERTO ? t : null;
   }catch(e){ ABIERTO = false; TURNO = null; }
 
-  if(ABIERTO){
-    try{ RESUMEN = await api(CFG.turnoResumen); }catch(e){ RESUMEN = null; }
-  }
+  RESUMEN = null;
+  if(ABIERTO){ try{ RESUMEN = await api(CFG.turnoResumen); }catch(e){} }
 
-  const punto = $('puntoTurno'), texto = $('textoTurno'), caja = $('cajaTurno');
+  // Adentro
+  try{ ACTIVOS = lista(await api(CFG.activos)); }catch(e){ ACTIVOS = []; }
 
-  if(!ABIERTO){
-    punto.className = 'punto off';
-    texto.innerHTML = '<strong>Turno cerrado</strong>';
-    caja.innerHTML = '<div class="text-muted small">No hay turno abierto.<br>' +
-                     'Se abre desde <a href="vehiculos.html">Vehículos</a>.</div>';
-    return;
-  }
+  // Stats
+  let d = {};
+  try{ const s = await api(CFG.stats); d = s?.data || s || {}; }catch(e){}
 
-  const desde = campo(TURNO, ['fecha_apertura','hora_apertura','created_at','fecha_inicio']);
-  const base  = Number(campo(TURNO, ['base_inicial','baseInicial','base'], 0)) || 0;
-  const rec   = recaudadoTurno();
-
-  punto.className = 'punto on';
-  texto.innerHTML = '<strong>Turno abierto</strong> desde ' + hora(desde);
-
-  let filas = '';
-  const r = RESUMEN?.data || RESUMEN || {};
-  const m = r.metodos || r.porMetodo || r.por_metodo;
-  if(Array.isArray(m) && m.length){
-    m.forEach(x => {
-      filas += `<div class="d-flex justify-content-between small py-1">
-                  <span class="text-muted">${campo(x,['metodo','metodo_pago','nombre'],'-')}</span>
-                  <span>${pesos(campo(x,['total','valor','monto'],0))}</span></div>`;
-    });
-  } else if(m && typeof m === 'object' && Object.keys(m).length){
-    Object.keys(m).forEach(k => {
-      filas += `<div class="d-flex justify-content-between small py-1">
-                  <span class="text-muted">${k}</span><span>${pesos(m[k])}</span></div>`;
-    });
-  }
-
-  caja.innerHTML =
-    `<div class="d-flex justify-content-between small py-1">
-       <span class="text-muted">Base inicial</span><span>${pesos(base)}</span></div>` +
-    filas +
-    `<div class="d-flex justify-content-between align-items-baseline border-top pt-2 mt-2">
-       <span class="rotulo">Debe haber en caja</span>
-       <span class="cifra-sm">${pesos(base + rec)}</span></div>
-     <div class="nota mt-2">Abierto desde ${hora(desde)}</div>`;
+  pintarBarra();
+  pintarCifras(d);
+  pintarTabla();
 }
 
-/* ---------- adentro y tipos ---------- */
-let ACTIVOS = [], TIPOS = [];
-
-async function cargarAdentro(){
-  try{ ACTIVOS = lista(await api(CFG.activos)); }
-  catch(e){ ACTIVOS = []; }
-
-  try{ TIPOS = lista(await apiPrimera(CFG.tipos)); }
-  catch(e){ TIPOS = []; }
-
-  $('cAdentro').textContent = ACTIVOS.length;
-
-  const cupos = TIPOS.reduce((a,t) =>
-    a + (Number(campo(t,['capacidad','cupos','capacidad_total'],0)) || 0), 0);
-
-  const barra = $('barraCupo');
-  if(cupos > 0){
-    const pct = Math.min(100, Math.round(ACTIVOS.length / cupos * 100));
-    barra.querySelector('div').style.width = pct + '%';
-    barra.classList.toggle('lleno', pct >= 90);
-    $('notaCupo').textContent = pct + '% de ' + cupos + ' cupos';
+function pintarBarra(){
+  const punto = $('puntoTurno'), texto = $('textoTurno');
+  if(ABIERTO){
+    const desde = campo(TURNO, ['fecha_apertura','hora_apertura','created_at','fecha_inicio']);
+    punto.className = 'punto on';
+    texto.textContent = 'Turno abierto desde ' + hora(desde);
   }else{
-    barra.style.display = 'none';
-    $('notaCupo').textContent = 'Sin cupos configurados';
+    punto.className = 'punto off';
+    texto.textContent = 'Turno cerrado';
   }
+}
 
-  // Agrupar por tipo
-  const cont = $('porTipo');
-  if(!ACTIVOS.length){ vacio(cont, 'No hay vehículos adentro.'); }
-  else{
-    const cuenta = {};
-    ACTIVOS.forEach(m => {
-      const t = campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'Sin tipo');
-      cuenta[t] = (cuenta[t] || 0) + 1;
-    });
-    cont.innerHTML = Object.keys(cuenta).sort((a,b) => cuenta[b]-cuenta[a]).map(t => {
-      const tipo = TIPOS.find(x =>
-        String(campo(x,['nombre','descripcion','tipo'],'')).toLowerCase() === String(t).toLowerCase());
-      const cap = tipo ? Number(campo(tipo,['capacidad','cupos','capacidad_total'],0)) || 0 : 0;
-      return `<div class="tipo-fila">
-                <span class="cifra-sm" style="min-width:2.5rem">${cuenta[t]}</span>
-                <span class="flex-grow-1">${t}</span>
-                ${cap ? `<span class="nota">de ${cap}</span>` : ''}
-              </div>`;
-    }).join('');
+function pintarCifras(d){
+  // Adentro
+  $('cAdentro').textContent = ACTIVOS.length;
+  $('subAdentro').innerHTML = ACTIVOS.length
+    ? ACTIVOS.length + (ACTIVOS.length === 1 ? ' vehículo' : ' vehículos')
+    : 'El parqueadero está vacío';
+
+  // Recaudado
+  const rec = campo(d, ['ingresos_hoy','ingresosHoy','recaudado_hoy','total_hoy','ingresos'], null);
+  const recNum = rec !== null ? Number(rec) : (ABIERTO ? recaudadoTurno() : null);
+  $('cRecaudo').textContent = recNum !== null ? pesos(recNum) : '–';
+
+  const atend = campo(d, ['movimientos_hoy','tickets','atendidos_hoy','salidas_hoy'], null);
+  $('subRecaudo').textContent = atend
+    ? atend + (atend === 1 ? ' vehículo atendido' : ' vehículos atendidos')
+    : (recNum ? 'Desde que abrió el turno' : 'Todavía no hay cobros');
+
+  // Caja
+  if(ABIERTO){
+    const base = Number(campo(TURNO, ['base_inicial','baseInicial','base'], 0)) || 0;
+    const enCaja = base + recaudadoTurno();
+    $('cCaja').textContent = pesos(enCaja);
+    $('subCaja').textContent = 'Base ' + pesos(base) + ' más lo cobrado';
+  }else{
+    $('cCaja').textContent = '–';
+    $('subCaja').innerHTML = 'Abre el turno en <a href="vehiculos.html">Vehículos</a>';
   }
+}
 
-  // Últimos en entrar
-  const tb = $('tbodyUltimos');
+function pintarTabla(){
+  const zona = $('zonaTabla'), chips = $('chips');
+
   if(!ACTIVOS.length){
-    tb.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay vehículos adentro.</td></tr>';
+    chips.innerHTML = '';
+    zona.innerHTML = '<div class="vacio">' +
+      (ABIERTO
+        ? 'Nadie ha entrado todavía. Registra la primera entrada en <a href="vehiculos.html">Vehículos</a>.'
+        : 'El turno está cerrado. Ábrelo en <a href="vehiculos.html">Vehículos</a> para empezar el día.') +
+      '</div>';
+    $('pie').textContent = '';
     return;
   }
+
+  // Chips por tipo
+  const cuenta = {};
+  ACTIVOS.forEach(m => {
+    const t = campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'Sin tipo');
+    cuenta[t] = (cuenta[t] || 0) + 1;
+  });
+  chips.innerHTML = Object.keys(cuenta)
+    .sort((a,b) => cuenta[b]-cuenta[a])
+    .map(t => '<span class="chip">' + cuenta[t] + ' ' + t.toLowerCase() + '</span>')
+    .join('');
+
   const orden = ACTIVOS.slice().sort((a,b) => {
     const fa = new Date(campo(a,['fecha_entrada','hora_entrada','entrada','created_at'],0)).getTime() || 0;
     const fb = new Date(campo(b,['fecha_entrada','hora_entrada','entrada','created_at'],0)).getTime() || 0;
     return fb - fa;
-  }).slice(0, 15);
-
-  tb.innerHTML = orden.map(m => {
-    const ent = campo(m,['fecha_entrada','hora_entrada','entrada','created_at']);
-    return `<tr>
-      <td class="placa">${String(campo(m,['placa'],'-')).toUpperCase()}</td>
-      <td>${campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'-')}</td>
-      <td>${hora(ent)}</td>
-      <td class="text-end text-muted">${textoTiempo(ent)}</td>
-    </tr>`;
-  }).join('');
-}
-
-/* ---------- cifras del día ---------- */
-async function cargarStats(){
-  let s = null;
-  try{ s = await api(CFG.stats); }catch(e){ /* endpoint opcional */ }
-  const d = s?.data || s || {};
-
-  const recaudo = campo(d, ['ingresos_hoy','ingresosHoy','recaudado_hoy','total_hoy','ingresos'], null);
-  const atend   = campo(d, ['movimientos_hoy','tickets','atendidos_hoy','salidas_hoy','total_movimientos'], null);
-
-  const recNum = recaudo !== null ? Number(recaudo) : (ABIERTO ? recaudadoTurno() : null);
-  $('cRecaudo').textContent = recNum !== null ? pesos(recNum) : '–';
-  $('notaRecaudo').textContent = recaudo !== null ? 'Desde las 12 de la noche' :
-                                 (ABIERTO ? 'Desde que abrió el turno' : 'Sin turno abierto');
-
-  $('cAtendidos').textContent = atend !== null ? atend : '–';
-
-  if(recNum !== null && atend) $('cPromedio').textContent = pesos(recNum / atend);
-  else $('cPromedio').textContent = '–';
-}
-
-/* ---------- planes ---------- */
-async function cargarPlanes(){
-  const cont = $('panelPlanes');
-  let arr = [];
-  try{ arr = lista(await apiPrimera(CFG.mensualidades)); }
-  catch(e){ vacio(cont, 'No se pudieron cargar los planes.'); return; }
-
-  if(!arr.length){ vacio(cont, 'No hay planes registrados.'); return; }
-
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  let activos = 0, porVencer = 0, vencidos = 0;
-
-  arr.forEach(x => {
-    const est = String(campo(x,['estado'],'')).toLowerCase();
-    const fin = campo(x,['fecha_fin','fechaFin','vence','fecha_vencimiento']);
-    if(est === 'cancelada') return;
-
-    if(fin){
-      const f = new Date(fin); f.setHours(0,0,0,0);
-      const dias = Math.round((f - hoy) / 86400000);
-      if(dias < 0){ vencidos++; return; }
-      if(dias <= 7){ porVencer++; activos++; return; }
-    }
-    if(est !== 'vencida') activos++; else vencidos++;
   });
 
-  cont.innerHTML =
-    `<div class="d-flex justify-content-between align-items-baseline py-1">
-       <span class="rotulo">Al día</span><span class="cifra-sm text-success">${activos}</span></div>
-     <div class="d-flex justify-content-between align-items-baseline py-1">
-       <span class="rotulo">Vencen esta semana</span>
-       <span class="cifra-sm ${porVencer ? 'text-warning' : ''}">${porVencer}</span></div>
-     <div class="d-flex justify-content-between align-items-baseline py-1">
-       <span class="rotulo">Vencidos</span>
-       <span class="cifra-sm ${vencidos ? 'text-danger' : ''}">${vencidos}</span></div>
-     <div class="nota mt-2">Se manejan en <a href="mensualidades.html">Planes</a>.</div>`;
-}
+  zona.innerHTML =
+    '<table class="table limpia mb-0">' +
+      '<thead><tr><th>Placa</th><th>Tipo</th><th>Entró</th><th class="text-end">Lleva</th></tr></thead>' +
+      '<tbody>' +
+      orden.slice(0, 20).map(m => {
+        const ent = campo(m,['fecha_entrada','hora_entrada','entrada','created_at']);
+        return '<tr>' +
+          '<td class="placa">' + String(campo(m,['placa'],'-')).toUpperCase() + '</td>' +
+          '<td class="text-muted">' + campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'-') + '</td>' +
+          '<td class="text-muted">' + hora(ent) + '</td>' +
+          '<td class="text-end text-muted">' + textoTiempo(ent) + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table>';
 
-/* ---------- empresa ---------- */
-async function cargarEmpresa(){
-  const cont = $('panelEmpresa');
-  let e = null, c = null;
-  try{ e = await api(CFG.empresa); }catch(x){}
-  try{ c = await api(CFG.config); }catch(x){}
-
-  if(!e && !c){ vacio(cont, 'No se pudieron cargar los datos.'); return; }
-
-  const emp = e?.data || e || {};
-  const cfg = c?.data || c || {};
-
-  const nombre = campo(emp,['nombre','razon_social'],'—');
-  const nit    = campo(emp,['nit'],'—');
-  const ap     = campo(cfg,['hora_apertura','apertura'],null);
-  const ci     = campo(cfg,['hora_cierre','cierre'],null);
-  const h24    = campo(cfg,['abierto_24h','es_24h','abierto24'],0);
-  const iva    = campo(cfg,['iva','porcentaje_iva'],null);
-
-  const horario = Number(h24) ? 'Abierto 24 horas'
-                : (ap && ci ? String(ap).slice(0,5) + ' a ' + String(ci).slice(0,5) : '—');
-
-  cont.innerHTML =
-    `<div class="fw-semibold">${nombre}</div>
-     <div class="nota mb-3">NIT ${nit}</div>
-     <div class="d-flex justify-content-between small py-1">
-       <span class="text-muted">Horario</span><span>${horario}</span></div>
-     <div class="d-flex justify-content-between small py-1">
-       <span class="text-muted">IVA</span><span>${iva !== null ? iva + '%' : '—'}</span></div>
-     <div class="d-flex justify-content-between small py-1">
-       <span class="text-muted">Tipos de vehículo</span><span>${TIPOS.length || '—'}</span></div>
-     <div class="nota mt-2">Se cambia en <a href="configuracion.html">Configuración</a>.</div>`;
-}
-
-/* ---------- arranque ---------- */
-async function refrescar(){
-  await cargarTurno();
-  await cargarAdentro();
-  await cargarStats();
-  $('actualizado').textContent = 'Actualizado ' + hora(new Date().toISOString());
+  $('pie').textContent = orden.length > 20
+    ? 'Se muestran 20 de ' + orden.length + '. La lista completa está en Vehículos.'
+    : '';
 }
 
 (async function init(){
-  await refrescar();
-  await cargarPlanes();
-  await cargarEmpresa();
-  setInterval(refrescar, 60000);
+  await cargar();
+  setInterval(cargar, 60000);
 })();
 </script>
 <script src="../js/menu.js"></script>
