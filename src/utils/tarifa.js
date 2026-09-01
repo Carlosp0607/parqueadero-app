@@ -51,7 +51,20 @@ function calcularTotal(tarifa, fechaEntrada, fechaSalida) {
         }
     }
 
-    return { minutos, total: Math.round(total) };
+    // detalleTiempo: el comprobante muestra el tiempo como "2d 5h 30m".
+    // Antes solo se devolvia el total de minutos y el frontend reventaba al leer
+    // detalleTiempo.dias sobre un undefined, lo que dejaba la salida sin modal de
+    // pago aunque el calculo del servidor hubiera salido bien.
+    const dias = Math.floor(minutos / (60 * 24));
+    let resto = minutos % (60 * 24);
+    const horas = Math.floor(resto / 60);
+    const mins = resto % 60;
+
+    return {
+        minutos,
+        total: Math.round(total),
+        detalleTiempo: { dias, horas, minutos: mins }
+    };
 }
 
 module.exports = { calcularTotal };
