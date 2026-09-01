@@ -9,21 +9,59 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="../css/dashboard.css" rel="stylesheet">
 <style>
-  .panel { background:#fff; border:1px solid #dee2e6; border-radius:.5rem; }
-  .panel-cab { padding:.7rem 1rem; border-bottom:1px solid #dee2e6; font-weight:600; }
-  .panel-cuerpo { padding:1rem; }
-  .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
-  .item-tipo { padding:.75rem 1rem; border-bottom:1px solid #f1f3f5; cursor:pointer; }
-  .item-tipo:hover { background:#f8f9fa; }
-  .item-tipo.sel { background:#e7f1ff; border-left:3px solid #0d6efd; padding-left:calc(1rem - 3px); }
-  .item-tipo.apagado { opacity:.5; }
+  .lienzo { max-width:1100px; }
+
+  .rotulo { font-size:.75rem; color:#8a94a0; text-transform:uppercase; letter-spacing:.04em; }
+  .titulo-seccion { font-size:.9rem; font-weight:600; color:#495057; }
+  .suave { color:#adb5bd; }
+  .vacio { padding:2.5rem 1rem; text-align:center; color:#adb5bd; }
+
+  .separador { border-left:1px solid #e9ecef; }
+
+  /* lista de tipos */
+  .item-tipo {
+    padding:.85rem 0; border-bottom:1px solid #f5f6f8; cursor:pointer;
+    border-left:2px solid transparent; padding-left:.75rem;
+  }
+  .item-tipo:hover { border-left-color:#e9ecef; }
+  .item-tipo.sel { border-left-color:#0d6efd; }
+  .item-tipo.apagado .nombre-tipo { color:#adb5bd; }
+  .item-tipo:last-child { border-bottom:0; }
+  .nombre-tipo { font-weight:500; }
   .precio-tipo { font-weight:600; }
   .sin-precio { color:#dc3545; font-size:.85rem; }
-  .opcion-modo { cursor:pointer; }
-  .opcion-modo.activa { border-color:#0d6efd !important; background:#f0f6ff; }
-  .campo-precio input { font-size:1.25rem; font-weight:600; }
-  .eco { min-height:1.1rem; font-size:.85rem; }
-  .resumen { background:#f8f9fa; border-left:4px solid #0d6efd; }
+
+  /* modos */
+  .opcion-modo {
+    cursor:pointer; padding:.6rem 0; border-bottom:1px solid #f5f6f8;
+    display:block; border-left:2px solid transparent; padding-left:.75rem;
+  }
+  .opcion-modo:hover { border-left-color:#e9ecef; }
+  .opcion-modo.activa { border-left-color:#0d6efd; }
+  .opcion-modo.activa .modo-nombre { color:#212529; font-weight:600; }
+  .modo-nombre { font-weight:500; color:#6c757d; }
+
+  /* inputs de línea */
+  .linea, .linea:focus {
+    border:0; border-bottom:1px solid #e9ecef; border-radius:0; box-shadow:none;
+  }
+  .linea:focus { border-bottom-color:#0d6efd; }
+  .campo-precio input { font-size:1.5rem; font-weight:600; padding-left:0; }
+  .eco { min-height:1.1rem; font-size:.8rem; color:#adb5bd; }
+
+  .resumen { border-top:1px solid #e9ecef; border-bottom:1px solid #e9ecef; padding:1.25rem 0; }
+
+  .btn-texto { background:none; border:0; padding:0; color:#0d6efd; font-size:.85rem; }
+  .btn-texto:disabled { color:#ced4da; }
+
+  .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
+
+  .modal-content { border:0; border-radius:.5rem; }
+  .modal-header, .modal-footer { border-color:#e9ecef; }
+
+  @media (max-width: 1199px){
+    .separador { border-left:0; border-top:1px solid #e9ecef; padding-top:1.5rem; margin-top:1.5rem; }
+  }
 </style>
 </head>
 <body>
@@ -38,202 +76,178 @@
 
 <div class="main-content">
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white">
     <div class="container-fluid">
       <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
-          <span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span>
+          <span class="nav-link small"><span id="userName">Usuario</span></span>
         </li>
       </ul>
     </div>
   </nav>
 
-  <div class="container-fluid py-4">
-    <div class="row g-3">
+  <div class="container py-5 lienzo">
+
+    <div class="mb-5">
+      <h4 class="mb-1">Tarifas</h4>
+      <div class="text-muted small">Qué recibe el parqueadero y cuánto le cobra.</div>
+    </div>
+
+    <div class="row g-4">
 
       <!-- LISTA DE TIPOS -->
       <div class="col-12 col-xl-4">
-        <div class="panel">
-          <div class="panel-cab bg-light d-flex align-items-center">
-            <span>Qué recibe el parqueadero</span>
-            <button class="btn btn-sm btn-primary ms-auto" id="btnNuevoTipo">
-              <i class="fas fa-plus me-1"></i>Tipo
-            </button>
-          </div>
-          <div id="listaTipos">
-            <div class="panel-cuerpo text-muted small">Cargando…</div>
-          </div>
+        <div class="d-flex align-items-baseline mb-3">
+          <span class="titulo-seccion">Tipos de vehículo</span>
+          <button class="btn-texto ms-auto" id="btnNuevoTipo">Nuevo tipo</button>
         </div>
-        <div class="text-muted small mt-2 px-1">
-          Toca un tipo para ponerle precio.
+        <div id="listaTipos">
+          <div class="vacio">Cargando…</div>
         </div>
       </div>
 
-      <!-- EDITOR DE TARIFA -->
-      <div class="col-12 col-xl-8">
+      <!-- EDITOR -->
+      <div class="col-12 col-xl-8 separador">
+        <div class="ps-xl-5">
 
-        <div class="panel" id="sinTipo">
-          <div class="panel-cuerpo text-center py-5">
-            <i class="fas fa-hand-pointer fs-2 text-muted opacity-50 d-block mb-3"></i>
-            <div class="text-muted">Escoge un tipo de vehículo de la izquierda.</div>
+          <div id="sinTipo">
+            <div class="vacio">Escoge un tipo de la lista para ponerle precio.</div>
           </div>
-        </div>
 
-        <div id="editor" class="d-none">
+          <div id="editor" class="d-none">
 
-          <!-- CABECERA DEL TIPO -->
-          <div class="panel mb-3">
-            <div class="panel-cuerpo d-flex align-items-center flex-wrap gap-3">
+            <!-- CABECERA -->
+            <div class="d-flex align-items-end flex-wrap gap-4 mb-5">
               <div>
                 <h5 class="mb-0" id="tituloTipo">—</h5>
-                <div class="text-muted small" id="subtituloTipo"></div>
+                <div class="small suave" id="subtituloTipo"></div>
               </div>
-              <div class="ms-auto d-flex align-items-center gap-3">
+              <div class="ms-auto d-flex align-items-end gap-4">
                 <div>
-                  <label class="form-label small text-muted mb-1">Cupos</label>
-                  <input type="number" class="form-control form-control-sm" id="tipoCupos"
-                         min="0" placeholder="Sin límite" style="width:8rem">
+                  <div class="rotulo mb-1">Cupos</div>
+                  <input type="number" class="form-control form-control-sm linea" id="tipoCupos"
+                         min="0" placeholder="Sin límite" style="width:7rem">
                 </div>
-                <div class="form-check form-switch mt-3">
+                <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="tipoActivo">
                   <label class="form-check-label small" for="tipoActivo">Disponible</label>
                 </div>
-                <button class="btn btn-outline-secondary btn-sm mt-3" id="btnGuardarTipo">
-                  Guardar tipo
-                </button>
+                <button class="btn-texto" id="btnGuardarTipo">Guardar tipo</button>
               </div>
             </div>
-          </div>
 
-          <!-- MODO -->
-          <div class="panel mb-3">
-            <div class="panel-cuerpo">
-              <label class="form-label fw-semibold mb-3">¿Cómo se le cobra?</label>
-              <div class="row g-2">
-                <div class="col-6 col-md-3">
-                  <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="minuto">
-                    <span class="fw-semibold">Por minuto</span>
-                    <div class="text-muted small">Paga lo que estuvo</div>
-                  </label>
-                </div>
-                <div class="col-6 col-md-3">
-                  <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="hora">
-                    <span class="fw-semibold">Por hora</span>
-                    <div class="text-muted small">Lo más común</div>
-                  </label>
-                </div>
-                <div class="col-6 col-md-3">
-                  <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="dia">
-                    <span class="fw-semibold">Por día</span>
-                    <div class="text-muted small">Estadías largas</div>
-                  </label>
-                </div>
-                <div class="col-6 col-md-3">
-                  <label class="border rounded p-2 d-block opcion-modo h-100" data-modo="mixto">
-                    <span class="fw-semibold">Combinado</span>
-                    <div class="text-muted small">Cambia según el rato</div>
-                  </label>
-                </div>
+            <div class="row g-5 mb-5">
+
+              <!-- MODO -->
+              <div class="col-md-5">
+                <div class="titulo-seccion mb-3">¿Cómo se le cobra?</div>
+                <label class="opcion-modo" data-modo="minuto">
+                  <div class="modo-nombre">Por minuto</div>
+                  <div class="small suave">Paga lo que estuvo</div>
+                </label>
+                <label class="opcion-modo" data-modo="hora">
+                  <div class="modo-nombre">Por hora</div>
+                  <div class="small suave">Lo más común</div>
+                </label>
+                <label class="opcion-modo" data-modo="dia">
+                  <div class="modo-nombre">Por día</div>
+                  <div class="small suave">Estadías largas</div>
+                </label>
+                <label class="opcion-modo" data-modo="mixto">
+                  <div class="modo-nombre">Combinado</div>
+                  <div class="small suave">Cambia según el rato</div>
+                </label>
               </div>
-            </div>
-          </div>
 
-          <!-- PRECIOS -->
-          <div class="panel mb-3">
-            <div class="panel-cuerpo">
-              <label class="form-label fw-semibold mb-3">¿Cuánto cobra?</label>
-              <div class="row g-3">
-                <div class="col-md-4 campo-precio" id="wrapMinuto">
-                  <label class="form-label small text-muted">Cada minuto</label>
-                  <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input type="number" min="0" step="1" id="valorMinuto" class="form-control" value="0">
+              <!-- PRECIOS -->
+              <div class="col-md-7">
+                <div class="titulo-seccion mb-3">¿Cuánto cobra?</div>
+
+                <div class="campo-precio mb-4" id="wrapMinuto">
+                  <div class="rotulo mb-1">Cada minuto</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <span class="suave">$</span>
+                    <input type="number" min="0" step="1" id="valorMinuto" class="form-control linea" value="0">
                   </div>
-                  <div class="eco text-muted" id="ecoMinuto"></div>
+                  <div class="eco" id="ecoMinuto"></div>
                 </div>
-                <div class="col-md-4 campo-precio" id="wrapHora">
-                  <label class="form-label small text-muted">Cada hora</label>
-                  <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input type="number" min="0" step="1" id="valorHora" class="form-control" value="0">
+
+                <div class="campo-precio mb-4" id="wrapHora">
+                  <div class="rotulo mb-1">Cada hora</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <span class="suave">$</span>
+                    <input type="number" min="0" step="1" id="valorHora" class="form-control linea" value="0">
                   </div>
-                  <div class="eco text-muted" id="ecoHora"></div>
+                  <div class="eco" id="ecoHora"></div>
                 </div>
-                <div class="col-md-4 campo-precio" id="wrapDia">
-                  <label class="form-label small text-muted">Cada día</label>
-                  <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input type="number" min="0" step="1" id="valorDia" class="form-control" value="0">
+
+                <div class="campo-precio mb-4" id="wrapDia">
+                  <div class="rotulo mb-1">Cada día</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <span class="suave">$</span>
+                    <input type="number" min="0" step="1" id="valorDia" class="form-control linea" value="0">
                   </div>
-                  <div class="eco text-muted" id="ecoDia"></div>
+                  <div class="eco" id="ecoDia"></div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- COMBINADO -->
-          <div class="panel mb-3 d-none" id="cardCombinado">
-            <div class="panel-cuerpo">
-              <label class="form-label fw-semibold mb-3">¿Cuándo cambia de precio?</label>
-              <div class="row g-3">
+            <!-- COMBINADO -->
+            <div class="mb-5 d-none" id="cardCombinado">
+              <div class="titulo-seccion mb-3">¿Cuándo cambia de precio?</div>
+              <div class="row g-4">
                 <div class="col-md-6">
-                  <label class="form-label small text-muted">Cobra por minuto hasta los</label>
-                  <div class="input-group">
-                    <input type="number" min="0" step="1" id="pasoMinutos" class="form-control" value="0">
-                    <span class="input-group-text">minutos</span>
+                  <div class="rotulo mb-1">Cobra por minuto hasta los</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <input type="number" min="0" step="1" id="pasoMinutos" class="form-control linea" value="0">
+                    <span class="small suave text-nowrap">minutos</span>
                   </div>
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small text-muted">Después por hora hasta las</label>
-                  <div class="input-group">
-                    <input type="number" min="0" step="1" id="pasoHoras" class="form-control" value="0">
-                    <span class="input-group-text">horas</span>
+                  <div class="rotulo mb-1">Después por hora hasta las</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <input type="number" min="0" step="1" id="pasoHoras" class="form-control linea" value="0">
+                    <span class="small suave text-nowrap">horas</span>
                   </div>
                 </div>
               </div>
-              <div class="form-text mt-2">Pasadas esas horas, se cobra por día.</div>
+              <div class="small suave mt-3">Pasadas esas horas, se cobra por día.</div>
             </div>
-          </div>
 
-          <!-- REDONDEO -->
-          <div class="panel mb-3" id="cardRedondeo">
-            <div class="panel-cuerpo">
-              <label class="form-label fw-semibold mb-3">¿Cómo cuenta las fracciones?</label>
-              <div class="row g-3">
+            <!-- REDONDEO -->
+            <div class="mb-5" id="cardRedondeo">
+              <div class="titulo-seccion mb-3">¿Cómo cuenta las fracciones?</div>
+              <div class="row g-4">
                 <div class="col-md-6" id="wrapRedHoras">
-                  <label class="form-label small text-muted">Si lleva 1 hora y 5 minutos…</label>
-                  <select id="redondeoHoras" class="form-select">
+                  <div class="rotulo mb-1">Si lleva 1 hora y 5 minutos…</div>
+                  <select id="redondeoHoras" class="form-select form-select-sm linea">
                     <option value="arriba">Cobra 2 horas completas</option>
                     <option value="exacto">Cobra solo 1 hora</option>
                   </select>
                 </div>
                 <div class="col-md-6" id="wrapRedDias">
-                  <label class="form-label small text-muted">Si lleva 1 día y unas horas…</label>
-                  <select id="redondeoDias" class="form-select">
+                  <div class="rotulo mb-1">Si lleva 1 día y unas horas…</div>
+                  <select id="redondeoDias" class="form-select form-select-sm linea">
                     <option value="arriba">Cobra 2 días completos</option>
                     <option value="exacto">Cobra solo 1 día</option>
                   </select>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- RESUMEN -->
-          <div class="panel mb-3 resumen">
-            <div class="panel-cuerpo">
-              <div class="text-muted small mb-1">Así va a quedar</div>
+            <!-- RESUMEN -->
+            <div class="resumen mb-4">
+              <div class="rotulo mb-2">Así va a quedar</div>
               <div id="resumenTarifa">—</div>
             </div>
-          </div>
 
-          <div class="d-flex justify-content-end gap-2 mb-4">
-            <button class="btn btn-outline-secondary" id="btnDescartar">Descartar cambios</button>
-            <button class="btn btn-primary btn-lg" id="btnGuardarTarifa">
-              <i class="fas fa-save me-2"></i>Guardar tarifa
-            </button>
-          </div>
+            <div class="d-flex justify-content-end align-items-center gap-4 mb-5">
+              <button class="btn-texto suave" id="btnDescartar">Descartar cambios</button>
+              <button class="btn btn-primary" id="btnGuardarTarifa">Guardar tarifa</button>
+            </div>
 
+          </div>
         </div>
       </div>
 
@@ -248,14 +262,14 @@
       <div class="modal-header"><h6 class="modal-title">Nuevo tipo de vehículo</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <label class="form-label">¿Cómo se llama?</label>
-        <input class="form-control mb-3" id="nuevoNombre" placeholder="Camioneta" autocomplete="off">
-        <label class="form-label">Cupos <span class="text-muted small">(opcional)</span></label>
+        <div class="rotulo mb-1">¿Cómo se llama?</div>
+        <input class="form-control mb-4" id="nuevoNombre" placeholder="Camioneta" autocomplete="off">
+        <div class="rotulo mb-1">Cupos <span class="suave">(opcional)</span></div>
         <input type="number" class="form-control" id="nuevoCupos" min="0" placeholder="Sin límite">
-        <div class="form-text mt-2">Después le pones precio aquí mismo.</div>
+        <div class="small suave mt-2">Después le pones precio aquí mismo.</div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button class="btn btn-primary" id="btnCrearTipo">Crear</button>
       </div>
     </div>
@@ -284,7 +298,7 @@ function pesos(v){
 function avisar(tipo, texto){
   const clase = { ok:'success', error:'danger', alerta:'warning' }[tipo] || 'secondary';
   const el = document.createElement('div');
-  el.className = `alert alert-${clase} alert-dismissible shadow-sm py-2`;
+  el.className = `alert alert-${clase} alert-dismissible py-2 border-0`;
   el.innerHTML = `<div class="small">${texto}</div>
                   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
   $('avisos').appendChild(el);
@@ -338,6 +352,15 @@ function campo(o, claves, def=null){
 
 const S = { tipos:[], tarifas:[], sel:null, rutaTipos:null };
 
+/* ---------- nombre de usuario ---------- */
+(function(){
+  try{
+    const u = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || 'null');
+    const n = u && (u.nombre || u.usuario || u.username || u.nombre_usuario);
+    if(n) $('userName').textContent = n;
+  }catch(e){}
+})();
+
 /* ---------- carga ---------- */
 function idTipo(t){ return campo(t,['id','id_tipo','id_tipo_vehiculo']); }
 function nombreTipo(t){ return campo(t,['nombre','descripcion','tipo'],'Tipo ' + idTipo(t)); }
@@ -370,7 +393,7 @@ async function cargarTodo(){
 function pintarLista(){
   const cont = $('listaTipos');
   if(!S.tipos.length){
-    cont.innerHTML = '<div class="panel-cuerpo text-muted small">No hay tipos. Crea el primero con el botón Tipo.</div>';
+    cont.innerHTML = '<div class="vacio">No hay tipos todavía. Crea el primero con "Nuevo tipo".</div>';
     return;
   }
 
@@ -382,23 +405,25 @@ function pintarLista(){
 
     let precio;
     if(!tf){
-      precio = '<span class="sin-precio"><i class="fas fa-triangle-exclamation me-1"></i>Sin precio</span>';
+      precio = '<span class="sin-precio">Sin precio</span>';
     }else{
       const modo = String(campo(tf,['modo_cobro','modo'],'mixto'));
       const v = modo === 'minuto' ? campo(tf,['valor_minuto'],0)
               : modo === 'dia'    ? campo(tf,['valor_dia_completo','valor_dia'],0)
               :                     campo(tf,['valor_hora'],0);
       const u = modo === 'minuto' ? '/min' : modo === 'dia' ? '/día' : '/hora';
-      precio = '<span class="precio-tipo">' + pesos(v) + '</span><span class="text-muted small">' + u + '</span>';
+      precio = '<span class="precio-tipo">' + pesos(v) + '</span><span class="small suave">' + u + '</span>';
     }
 
     return `<div class="item-tipo ${act ? '' : 'apagado'} ${String(S.sel)===String(id) ? 'sel' : ''}"
                  data-id="${id}">
               <div class="d-flex align-items-center">
                 <div>
-                  <div class="fw-semibold">${nombreTipo(t)}
-                    ${act ? '' : '<span class="badge bg-secondary ms-1">Apagado</span>'}</div>
-                  <div class="text-muted small">${cup ? cup + ' cupos' : 'Sin límite de cupos'}</div>
+                  <div class="nombre-tipo">${nombreTipo(t)}</div>
+                  <div class="small suave">${
+                    (act ? '' : 'No recibe entradas · ') +
+                    (cup ? cup + ' cupos' : 'Sin límite de cupos')
+                  }</div>
                 </div>
                 <div class="ms-auto text-end">${precio}</div>
               </div>
@@ -545,7 +570,7 @@ $('btnGuardarTarifa').addEventListener('click', async () => {
   if(MODO === 'mixto'  && (min <= 0 || hor <= 0 || dia <= 0))
     return avisar('alerta','En combinado hacen falta los tres precios.');
 
-  btn.disabled = true; btn.innerHTML = 'Guardando…';
+  btn.disabled = true; btn.textContent = 'Guardando…';
   try{
     await api(CFG.tarifaGuardar, { method:'PUT', body: JSON.stringify({
       id_tipo_vehiculo: S.sel,
@@ -563,7 +588,7 @@ $('btnGuardarTarifa').addEventListener('click', async () => {
     await cargarTodo();
     seleccionar(S.sel);
   }catch(e){ avisar('error', e.message); }
-  finally{ btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar tarifa'; }
+  finally{ btn.disabled = false; btn.textContent = 'Guardar tarifa'; }
 });
 
 $('btnDescartar').addEventListener('click', () => { if(S.sel) seleccionar(S.sel); });
