@@ -9,23 +9,74 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="../css/dashboard.css" rel="stylesheet">
 <style>
-  .franja-turno { background:#fff; border-bottom:1px solid #dee2e6; padding:.6rem 1rem; }
-  .punto { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
-  .punto.on  { background:#198754; box-shadow:0 0 0 3px rgba(25,135,84,.18); }
-  .punto.off { background:#adb5bd; }
-  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:700; letter-spacing:.06em; }
-  .placa-xl { font-size:1.5rem; }
-  .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
-  .panel { background:#fff; border:1px solid #dee2e6; border-radius:.5rem; }
-  .panel-cab { padding:.7rem 1rem; border-bottom:1px solid #dee2e6; font-weight:600; }
-  .panel-cuerpo { padding:1rem; }
-  #inPlaca { font-size:1.6rem; height:auto; padding:.5rem .75rem; letter-spacing:.1em; }
-  .total-cobro { font-size:2.4rem; font-weight:700; line-height:1.1; }
+  .lienzo { max-width:1100px; }
+
+  .rotulo { font-size:.75rem; color:#8a94a0; text-transform:uppercase; letter-spacing:.04em; }
+  .titulo-seccion { font-size:.9rem; font-weight:600; color:#495057; }
+  .suave { color:#adb5bd; }
+
+  .punto { width:.5rem; height:.5rem; border-radius:50%; display:inline-block; }
+  .punto.on  { background:#198754; }
+  .punto.off { background:#ced4da; }
+
+  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:600; letter-spacing:.05em; }
+  .placa-xl { font-size:1.6rem; letter-spacing:.08em; }
+
+  .cifra { font-size:3rem; font-weight:600; line-height:1; letter-spacing:-.02em; }
+
+  .barra-turno { border-bottom:1px solid #e9ecef; padding:.75rem 0; }
+
+  .tabs-limpias { border:0; gap:1.75rem; }
+  .tabs-limpias .nav-link {
+    border:0; background:none; padding:.35rem 0;
+    color:#8a94a0; font-weight:500; font-size:.9rem;
+  }
+  .tabs-limpias .nav-link:hover { color:#495057; }
+  .tabs-limpias .nav-link.active { color:#212529; box-shadow:inset 0 -2px 0 #0d6efd; }
+
+  .separador { border-left:1px solid #e9ecef; }
+
+  table.limpia { --bs-table-bg:transparent; }
+  table.limpia th {
+    font-weight:500; font-size:.75rem; color:#8a94a0;
+    text-transform:uppercase; letter-spacing:.04em;
+    border-bottom:1px solid #e9ecef; padding:0 0 .5rem 0;
+  }
+  table.limpia td { padding:.65rem 0; border-bottom:1px solid #f5f6f8; vertical-align:middle; }
+  table.limpia tr:last-child td { border-bottom:0; }
+
+  .vacio { padding:2.5rem 1rem; text-align:center; color:#adb5bd; }
+
+  #inPlaca {
+    font-size:1.6rem; height:auto; padding:.4rem .5rem; letter-spacing:.1em;
+    border:0; border-bottom:1px solid #dee2e6; border-radius:0; box-shadow:none;
+  }
+  #inPlaca:focus { border-bottom-color:#0d6efd; box-shadow:none; }
+
+  .filtro-linea {
+    border:0; border-bottom:1px solid #e9ecef; border-radius:0;
+    box-shadow:none; font-size:.85rem; padding-left:0;
+  }
+  .filtro-linea:focus { border-bottom-color:#0d6efd; box-shadow:none; }
+
+  .total-cobro { font-size:2.6rem; font-weight:600; line-height:1.1; letter-spacing:-.02em; }
   #cobroBox { display:none; }
-  .fila td { padding:.7rem .75rem; vertical-align:middle; }
-  .bloqueo { text-align:center; padding:3rem 1rem; }
-  .cuadre { font-size:1.3rem; font-weight:700; }
-  .nav-tabs .nav-link { font-weight:500; }
+
+  .cuadre { font-size:1.25rem; font-weight:600; }
+  .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
+
+  .btn-texto {
+    background:none; border:0; padding:0; color:#0d6efd;
+    font-size:.85rem; text-decoration:none;
+  }
+  .btn-texto:disabled { color:#ced4da; }
+
+  .modal-content { border:0; border-radius:.5rem; }
+  .modal-header, .modal-footer { border-color:#e9ecef; }
+
+  @media (max-width: 991px){
+    .separador { border-left:0; border-top:1px solid #e9ecef; padding-top:1.5rem; margin-top:1.5rem; }
+  }
 </style>
 </head>
 <body>
@@ -40,209 +91,188 @@
 
 <div class="main-content">
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white">
     <div class="container-fluid">
       <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
-          <span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span>
+          <span class="nav-link small"><span id="userName">Usuario</span></span>
         </li>
       </ul>
     </div>
   </nav>
 
-  <!-- FRANJA DE TURNO -->
-  <div class="franja-turno d-flex align-items-center flex-wrap gap-3">
-    <span class="d-flex align-items-center gap-2">
-      <span class="punto off" id="puntoTurno"></span>
-      <span id="textoTurno" class="small">Consultando…</span>
-    </span>
-    <span class="ms-auto d-flex align-items-center gap-3">
-      <span class="small text-muted d-none" id="wrapRecaudo">
-        Recaudado <strong class="text-success" id="recaudoTurno">$ 0</strong>
+  <div class="container lienzo">
+
+    <!-- TURNO -->
+    <div class="barra-turno d-flex align-items-center flex-wrap gap-3">
+      <span class="d-flex align-items-center gap-2 small">
+        <span class="punto off" id="puntoTurno"></span>
+        <span id="textoTurno">Consultando…</span>
       </span>
-      <button class="btn btn-sm btn-success" id="btnTurno" disabled>…</button>
-    </span>
-  </div>
+      <span class="ms-auto d-flex align-items-center gap-4">
+        <span class="small suave d-none" id="wrapRecaudo">
+          Recaudado <span class="text-success fw-semibold" id="recaudoTurno">$ 0</span>
+        </span>
+        <button class="btn-texto" id="btnTurno" disabled>…</button>
+      </span>
+    </div>
 
-  <div class="container-fluid py-3">
+    <div class="py-4">
 
-    <ul class="nav nav-tabs mb-3" role="tablist">
-      <li class="nav-item">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMovimiento" type="button">
-          Entrada y salida
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAdentro" type="button">
-          Adentro <span class="badge bg-primary ms-1" id="contActivos">0</span>
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorial" type="button">
-          Historial
-        </button>
-      </li>
-    </ul>
+      <ul class="nav tabs-limpias mb-4" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMovimiento" type="button">
+            Entrada y salida
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAdentro" type="button">
+            Adentro <span class="suave" id="contActivos">0</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorial" type="button">
+            Historial
+          </button>
+        </li>
+      </ul>
 
-    <div class="tab-content">
+      <div class="tab-content">
 
-      <!-- ENTRADA Y SALIDA -->
-      <div class="tab-pane fade show active" id="tabMovimiento">
+        <!-- ENTRADA Y SALIDA -->
+        <div class="tab-pane fade show active" id="tabMovimiento">
 
-        <div id="bloqueoTurno" class="panel d-none">
-          <div class="bloqueo">
-            <i class="fas fa-lock fs-1 text-muted opacity-50 d-block mb-3"></i>
-            <h5>Abre el turno para empezar el día</h5>
-            <p class="text-muted">Mientras el turno esté cerrado no se pueden registrar entradas ni cobros.</p>
-            <button class="btn btn-success btn-lg" id="btnAbrirDesdeBloqueo">Abrir turno</button>
-          </div>
-        </div>
-
-        <div class="row g-3" id="zonaTrabajo">
-
-          <!-- ENTRADA -->
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <div class="panel-cab bg-light">Entra un vehículo</div>
-              <div class="panel-cuerpo">
-                <label class="form-label small text-muted">Tipo</label>
-                <div class="input-group mb-3">
-                  <select class="form-select" id="inTipo"></select>
-                  <button class="btn btn-outline-secondary" type="button" id="btnNuevoTipo" title="Agregar tipo">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </div>
-
-                <label class="form-label small text-muted">Placa</label>
-                <input class="form-control placa mb-3 text-uppercase text-center" id="inPlaca"
-                       maxlength="10" autocomplete="off" placeholder="PLACA">
-
-                <button class="btn btn-primary btn-lg w-100" id="btnIngresar">Registrar entrada</button>
-              </div>
+          <div id="bloqueoTurno" class="d-none">
+            <div class="vacio">
+              <div class="mb-3">El turno está cerrado. Ábrelo para registrar entradas y cobros.</div>
+              <button class="btn btn-success" id="btnAbrirDesdeBloqueo">Abrir turno</button>
             </div>
           </div>
 
-          <!-- LISTA RÁPIDA -->
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <div class="panel-cab bg-light d-flex align-items-center">
-                <span>Toca para cobrar</span>
-                <input class="form-control form-control-sm ms-auto" style="max-width:9rem"
-                       id="filtroRapido" placeholder="Buscar">
+          <div class="row g-4" id="zonaTrabajo">
+
+            <!-- ENTRADA -->
+            <div class="col-lg-4">
+              <div class="titulo-seccion mb-4">Entra un vehículo</div>
+
+              <div class="rotulo mb-1">Tipo</div>
+              <div class="d-flex align-items-center gap-2 mb-4">
+                <select class="form-select form-select-sm" id="inTipo"></select>
+                <button class="btn-texto text-nowrap" type="button" id="btnNuevoTipo">Nuevo tipo</button>
               </div>
-              <div class="panel-cuerpo p-0">
-                <div class="table-responsive" style="max-height:24rem; overflow:auto">
-                  <table class="table table-hover mb-0">
+
+              <div class="rotulo mb-1">Placa</div>
+              <input class="form-control placa text-uppercase mb-4" id="inPlaca"
+                     maxlength="10" autocomplete="off" placeholder="PLACA">
+
+              <button class="btn btn-primary w-100" id="btnIngresar">Registrar entrada</button>
+            </div>
+
+            <!-- LISTA RÁPIDA -->
+            <div class="col-lg-4 separador">
+              <div class="ps-lg-4">
+                <div class="d-flex align-items-baseline gap-3 mb-3">
+                  <span class="titulo-seccion">Toca para cobrar</span>
+                  <input class="form-control form-control-sm filtro-linea ms-auto" style="max-width:8rem"
+                         id="filtroRapido" placeholder="Buscar placa">
+                </div>
+                <div style="max-height:26rem; overflow:auto">
+                  <table class="table limpia mb-0">
                     <tbody id="tbodyRapido">
-                      <tr><td class="text-center text-muted py-4">Cargando…</td></tr>
+                      <tr><td class="vacio">Cargando…</td></tr>
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- COBRO -->
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <div class="panel-cab bg-light">Sale un vehículo</div>
-              <div class="panel-cuerpo">
+            <!-- COBRO -->
+            <div class="col-lg-4 separador">
+              <div class="ps-lg-4">
+                <div class="titulo-seccion mb-4">Sale un vehículo</div>
 
-                <div id="sinSeleccion" class="text-center text-muted py-5">
-                  <i class="fas fa-hand-pointer fs-2 d-block mb-3 opacity-50"></i>
-                  Escoge un vehículo de la lista.
+                <div id="sinSeleccion" class="vacio">
+                  Escoge un vehículo de la lista de al lado.
                 </div>
 
                 <div id="cobroBox">
-                  <div class="text-center mb-3">
-                    <div class="placa placa-xl" id="cbPlaca">-</div>
-                    <div class="text-muted small" id="cbTiempo">-</div>
-                  </div>
+                  <div class="placa placa-xl" id="cbPlaca">-</div>
+                  <div class="small suave mb-4" id="cbTiempo">-</div>
 
-                  <div class="text-center border-top border-bottom py-3 mb-3">
-                    <div class="text-muted small">A cobrar</div>
-                    <div class="total-cobro text-success" id="cbTotal">$ 0</div>
-                  </div>
+                  <div class="rotulo">A cobrar</div>
+                  <div class="total-cobro text-success mb-4" id="cbTotal">$ 0</div>
 
-                  <label class="form-label small text-muted">Cómo paga</label>
-                  <select class="form-select mb-3" id="outMetodo">
+                  <div class="rotulo mb-1">Cómo paga</div>
+                  <select class="form-select form-select-sm mb-4" id="outMetodo">
                     <option value="efectivo">Efectivo</option>
                     <option value="tarjeta">Tarjeta</option>
                     <option value="QR">QR</option>
                   </select>
 
-                  <button class="btn btn-success btn-lg w-100 mb-2" id="btnFinalizar">Cobrar y dar salida</button>
-                  <button class="btn btn-link btn-sm w-100 text-muted" id="btnCancelar">Cancelar</button>
+                  <button class="btn btn-success w-100 mb-3" id="btnFinalizar">Cobrar y dar salida</button>
+                  <div class="text-center">
+                    <button class="btn-texto suave" id="btnCancelar">Cancelar</button>
+                  </div>
                 </div>
-
               </div>
             </div>
+
           </div>
-
         </div>
-      </div>
 
-      <!-- ADENTRO -->
-      <div class="tab-pane fade" id="tabAdentro">
-        <div class="panel">
-          <div class="panel-cab bg-light d-flex align-items-center flex-wrap gap-2">
-            <span>Vehículos en el parqueadero</span>
-            <input class="form-control form-control-sm ms-auto" style="max-width:12rem"
+        <!-- ADENTRO -->
+        <div class="tab-pane fade" id="tabAdentro">
+          <div class="d-flex align-items-baseline flex-wrap gap-3 mb-3">
+            <span class="titulo-seccion">Vehículos en el parqueadero</span>
+            <input class="form-control form-control-sm filtro-linea ms-auto" style="max-width:10rem"
                    id="filtroAdentro" placeholder="Buscar placa">
-            <button class="btn btn-sm btn-outline-secondary" id="btnRefrescar"><i class="fas fa-rotate"></i></button>
+            <button class="btn-texto" id="btnRefrescar">Actualizar</button>
           </div>
-          <div class="panel-cuerpo p-0">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr><th>Placa</th><th>Tipo</th><th>Entró</th><th>Lleva</th><th class="text-end">Acción</th></tr>
-                </thead>
-                <tbody id="tbodyAdentro">
-                  <tr><td colspan="5" class="text-center text-muted py-4">Cargando…</td></tr>
-                </tbody>
-              </table>
+          <table class="table limpia mb-0">
+            <thead>
+              <tr><th>Placa</th><th>Tipo</th><th>Entró</th><th>Lleva</th><th class="text-end">Acción</th></tr>
+            </thead>
+            <tbody id="tbodyAdentro">
+              <tr><td colspan="5" class="vacio">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="tab-pane fade" id="tabHistorial">
+          <div class="d-flex align-items-baseline flex-wrap gap-3 mb-3">
+            <span class="titulo-seccion">Vehículos que ya salieron</span>
+            <div class="ms-auto d-flex flex-wrap gap-3 align-items-center">
+              <input type="date" class="form-control form-control-sm filtro-linea" id="hDesde" style="max-width:9rem">
+              <input type="date" class="form-control form-control-sm filtro-linea" id="hHasta" style="max-width:9rem">
+              <input class="form-control form-control-sm filtro-linea" id="hPlaca" placeholder="Placa" style="max-width:7rem">
+              <button class="btn-texto" id="btnBuscarHist">Buscar</button>
             </div>
+          </div>
+
+          <table class="table limpia mb-0">
+            <thead>
+              <tr>
+                <th>Placa</th><th>Tipo</th>
+                <th>Entró</th><th>Salió</th>
+                <th>Tiempo</th><th>Pago</th><th class="text-end">Valor</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyHistorial">
+              <tr><td colspan="7" class="vacio">Escoge un rango y pulsa Buscar.</td></tr>
+            </tbody>
+          </table>
+
+          <div class="d-flex justify-content-between align-items-center pt-3 mt-3"
+               style="border-top:1px solid #e9ecef">
+            <button class="btn-texto" id="hPrev">Anterior</button>
+            <span class="small suave" id="hInfo"></span>
+            <button class="btn-texto" id="hNext">Siguiente</button>
           </div>
         </div>
-      </div>
 
-      <!-- HISTORIAL -->
-      <div class="tab-pane fade" id="tabHistorial">
-        <div class="panel">
-          <div class="panel-cab bg-light d-flex align-items-center flex-wrap gap-2">
-            <span>Vehículos que ya salieron</span>
-            <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
-              <input type="date" class="form-control form-control-sm" id="hDesde" style="max-width:10rem">
-              <input type="date" class="form-control form-control-sm" id="hHasta" style="max-width:10rem">
-              <input class="form-control form-control-sm" id="hPlaca" placeholder="Placa" style="max-width:8rem">
-              <button class="btn btn-sm btn-primary" id="btnBuscarHist">Buscar</button>
-            </div>
-          </div>
-          <div class="panel-cuerpo p-0">
-            <div class="table-responsive">
-              <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Placa</th><th>Tipo</th>
-                    <th>Entró</th><th>Salió</th>
-                    <th>Tiempo</th><th>Pago</th><th class="text-end">Valor</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyHistorial">
-                  <tr><td colspan="7" class="text-center text-muted py-4">Escoge un rango y pulsa Buscar.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="panel-cuerpo d-flex justify-content-between align-items-center border-top">
-            <button class="btn btn-outline-secondary btn-sm" id="hPrev">Anterior</button>
-            <span class="small text-muted" id="hInfo"></span>
-            <button class="btn btn-outline-secondary btn-sm" id="hNext">Siguiente</button>
-          </div>
-        </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -254,15 +284,15 @@
       <div class="modal-header"><h6 class="modal-title">Abrir turno</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <label class="form-label">¿Con cuánta plata arranca la caja?</label>
-        <div class="input-group input-group-lg">
+        <div class="rotulo mb-2">¿Con cuánta plata arranca la caja?</div>
+        <div class="input-group">
           <span class="input-group-text">$</span>
           <input type="number" class="form-control" id="baseInicial" value="50000" min="0" step="1000">
         </div>
-        <div class="form-text mt-2" id="ecoBase"></div>
+        <div class="small suave mt-2" id="ecoBase"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button class="btn btn-success" id="btnConfirmarAbrir">Abrir turno</button>
       </div>
     </div>
@@ -276,19 +306,19 @@
       <div class="modal-header"><h6 class="modal-title">Cerrar turno</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <table class="table table-sm mb-3">
+        <table class="table limpia mb-4">
           <tbody id="tbodyCierre"></tbody>
         </table>
 
-        <label class="form-label">¿Cuánta plata hay en la caja?</label>
-        <div class="input-group input-group-lg mb-2">
+        <div class="rotulo mb-2">¿Cuánta plata hay en la caja?</div>
+        <div class="input-group mb-3">
           <span class="input-group-text">$</span>
           <input type="number" class="form-control" id="conteoCaja" min="0" step="1000" placeholder="0">
         </div>
-        <div id="cuadre" class="text-center py-2"></div>
+        <div id="cuadre" class="text-center"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button class="btn btn-danger" id="btnConfirmarCerrar">Cerrar turno</button>
       </div>
     </div>
@@ -302,14 +332,14 @@
       <div class="modal-header"><h6 class="modal-title">Nuevo tipo de vehículo</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <label class="form-label">¿Cómo se llama?</label>
-        <input class="form-control mb-3" id="tipoNombre" placeholder="Camioneta" autocomplete="off">
-        <label class="form-label">Cupos <span class="text-muted small">(opcional)</span></label>
+        <div class="rotulo mb-1">¿Cómo se llama?</div>
+        <input class="form-control mb-4" id="tipoNombre" placeholder="Camioneta" autocomplete="off">
+        <div class="rotulo mb-1">Cupos <span class="suave">(opcional)</span></div>
         <input type="number" class="form-control" id="tipoCupos" min="0" placeholder="Sin límite">
-        <div class="form-text mt-2">Después ponle precio en Tarifas.</div>
+        <div class="small suave mt-2">Después ponle precio en Tarifas.</div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button class="btn btn-primary" id="btnGuardarTipo">Crear</button>
       </div>
     </div>
@@ -320,9 +350,9 @@
 <div class="modal fade" id="modalComprobante" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-      <div class="modal-body text-center py-4" id="cuerpoComprobante"></div>
+      <div class="modal-body text-center py-5" id="cuerpoComprobante"></div>
       <div class="modal-footer justify-content-center">
-        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">Imprimir</button>
+        <button class="btn-texto me-4" onclick="window.print()">Imprimir</button>
         <button class="btn btn-primary btn-sm" data-bs-dismiss="modal">Listo</button>
       </div>
     </div>
@@ -389,7 +419,7 @@ function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function avisar(tipo, texto){
   const clase = { ok:'success', error:'danger', alerta:'warning' }[tipo] || 'secondary';
   const el = document.createElement('div');
-  el.className = `alert alert-${clase} alert-dismissible shadow-sm py-2`;
+  el.className = `alert alert-${clase} alert-dismissible py-2 border-0`;
   el.innerHTML = `<div class="small">${texto}</div>
                   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
   $('avisos').appendChild(el);
@@ -450,6 +480,15 @@ const S = {
   hist:{ pagina:1, porPagina:25, total:0 }
 };
 
+/* ---------- nombre de usuario ---------- */
+(function(){
+  try{
+    const u = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || 'null');
+    const n = u && (u.nombre || u.usuario || u.username || u.nombre_usuario);
+    if(n) $('userName').textContent = n;
+  }catch(e){}
+})();
+
 /* ================= TURNO ================= */
 async function sincronizarTurno(){
   try{
@@ -486,17 +525,17 @@ function pintarTurno(){
     punto.className = 'punto on';
     const desde = campo(S.turno, ['fecha_apertura','hora_apertura','created_at','fecha_inicio']);
     const base  = campo(S.turno, ['base_inicial','baseInicial','base'], null);
-    texto.innerHTML = '<strong>Turno abierto</strong> desde ' + hora(desde) +
-                      (base !== null ? ' · base ' + pesos(base) : '');
-    btn.className = 'btn btn-sm btn-outline-danger';
+    texto.innerHTML = 'Turno abierto desde ' + hora(desde) +
+                      (base !== null ? ' <span class="suave">· base ' + pesos(base) + '</span>' : '');
     btn.textContent = 'Cerrar turno';
+    btn.style.color = '#dc3545';
     $('wrapRecaudo').classList.remove('d-none');
     $('recaudoTurno').textContent = pesos(totalRecaudado());
   }else{
     punto.className = 'punto off';
-    texto.innerHTML = '<strong>Turno cerrado</strong>';
-    btn.className = 'btn btn-sm btn-success';
+    texto.textContent = 'Turno cerrado';
     btn.textContent = 'Abrir turno';
+    btn.style.color = '#198754';
     $('wrapRecaudo').classList.add('d-none');
   }
   btn.disabled = false;
@@ -550,18 +589,18 @@ async function prepararCierre(){
   const m = r.metodos || r.porMetodo || r.por_metodo;
   if(Array.isArray(m)){
     m.forEach(x => {
-      filas += `<tr><td class="ps-4 text-muted">${campo(x,['metodo','metodo_pago','nombre'],'-')}</td>
-                    <td class="text-end">${pesos(campo(x,['total','valor','monto'],0))}</td></tr>`;
+      filas += `<tr><td class="ps-3 suave">${campo(x,['metodo','metodo_pago','nombre'],'-')}</td>
+                    <td class="text-end suave">${pesos(campo(x,['total','valor','monto'],0))}</td></tr>`;
     });
   } else if(m && typeof m === 'object'){
     Object.keys(m).forEach(k => {
-      filas += `<tr><td class="ps-4 text-muted">${k}</td><td class="text-end">${pesos(m[k])}</td></tr>`;
+      filas += `<tr><td class="ps-3 suave">${k}</td><td class="text-end suave">${pesos(m[k])}</td></tr>`;
     });
   }
 
   filas += `<tr><td>Recaudado</td><td class="text-end">${pesos(rec)}</td></tr>`;
-  filas += `<tr class="table-light"><td class="fw-bold">Debe haber en caja</td>
-                <td class="text-end fw-bold">${pesos(base + rec)}</td></tr>`;
+  filas += `<tr><td class="fw-semibold">Debe haber en caja</td>
+                <td class="text-end fw-semibold">${pesos(base + rec)}</td></tr>`;
 
   $('tbodyCierre').innerHTML = filas;
   $('conteoCaja').value = '';
@@ -580,7 +619,7 @@ $('conteoCaja').addEventListener('input', function(){
 
   const dif = contado - esperado;
   if(dif === 0){
-    caja.innerHTML = '<span class="cuadre text-success"><i class="fas fa-check me-2"></i>Cuadra exacto</span>';
+    caja.innerHTML = '<span class="cuadre text-success">Cuadra exacto</span>';
   }else if(dif > 0){
     caja.innerHTML = '<span class="cuadre text-primary">Sobran ' + pesos(dif) + '</span>';
   }else{
@@ -689,21 +728,21 @@ function pintarRapido(){
   $('contActivos').textContent = S.activos.length;
 
   if(!arr.length){
-    tb.innerHTML = `<tr><td class="text-center text-muted py-4">${
-      S.activos.length ? 'Ninguna placa coincide.' : 'No hay vehículos adentro.'
+    tb.innerHTML = `<tr><td class="vacio">${
+      S.activos.length ? 'Ninguna placa coincide.' : 'Todavía no ha entrado nadie.'
     }</td></tr>`;
     return;
   }
 
   tb.innerHTML = arr.map(m => {
     const d = datosFila(m);
-    return `<tr class="fila">
+    return `<tr>
       <td>
         <div class="placa">${d.placa}</div>
-        <div class="text-muted small">${d.tipo} · lleva ${textoTiempo(null, d.ent)}</div>
+        <div class="small suave">${d.tipo} · lleva ${textoTiempo(null, d.ent)}</div>
       </td>
-      <td class="text-end" style="width:6.5rem">
-        <button class="btn btn-sm btn-outline-success btn-cobrar" data-id="${d.id}">Cobrar</button>
+      <td class="text-end" style="width:5rem">
+        <button class="btn-texto btn-cobrar" data-id="${d.id}">Cobrar</button>
       </td></tr>`;
   }).join('');
 
@@ -717,7 +756,7 @@ function pintarAdentro(){
   const tb = $('tbodyAdentro');
 
   if(!arr.length){
-    tb.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5">No hay vehículos adentro.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" class="vacio">No hay vehículos adentro.</td></tr>';
     return;
   }
 
@@ -725,11 +764,11 @@ function pintarAdentro(){
     const d = datosFila(m);
     return `<tr>
       <td class="placa">${d.placa}</td>
-      <td>${d.tipo}</td>
-      <td>${hora(d.ent)}</td>
-      <td>${textoTiempo(null, d.ent)}</td>
+      <td class="suave">${d.tipo}</td>
+      <td class="suave">${hora(d.ent)}</td>
+      <td class="suave">${textoTiempo(null, d.ent)}</td>
       <td class="text-end">
-        <button class="btn btn-sm btn-outline-success btn-cobrar2" data-id="${d.id}">Cobrar</button>
+        <button class="btn-texto btn-cobrar2" data-id="${d.id}">Cobrar</button>
       </td></tr>`;
   }).join('');
 
@@ -838,17 +877,17 @@ $('btnFinalizar').addEventListener('click', async () => {
 
 function mostrarComprobante(c){
   $('cuerpoComprobante').innerHTML = `
-    <div class="text-success mb-2"><i class="fas fa-circle-check fs-1"></i></div>
     <div class="placa placa-xl">${c.placa}</div>
-    <div class="text-muted small mb-3">${c.tiempo} · ${c.metodo}</div>
-    <div class="total-cobro text-success">${pesos(c.total)}</div>`;
+    <div class="small suave mb-4">${c.tiempo} · ${c.metodo}</div>
+    <div class="total-cobro text-success">${pesos(c.total)}</div>
+    <div class="small suave mt-2">Cobrado</div>`;
   bootstrap.Modal.getOrCreateInstance($('modalComprobante')).show();
 }
 
 /* ================= HISTORIAL ================= */
 async function cargarHistorial(){
   const tb = $('tbodyHistorial');
-  tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Buscando…</td></tr>';
+  tb.innerHTML = '<tr><td colspan="7" class="vacio">Buscando…</td></tr>';
 
   const p = new URLSearchParams();
   if($('hDesde').value) p.set('desde', $('hDesde').value);
@@ -864,13 +903,13 @@ async function cargarHistorial(){
     arr = lista(r);
     S.hist.total = Number(campo(r, ['total','totalRows','count'], arr.length)) || arr.length;
   }catch(e){
-    tb.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">${e.message}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="7" class="vacio text-danger">${e.message}</td></tr>`;
     $('hInfo').textContent = '';
     return;
   }
 
   if(!arr.length){
-    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No hay salidas en ese rango.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="7" class="vacio">No hay salidas en ese rango.</td></tr>';
     $('hInfo').textContent = 'Página ' + S.hist.pagina;
     return;
   }
@@ -884,11 +923,11 @@ async function cargarHistorial(){
     const met   = campo(m,['metodo_pago','metodoPago','metodo'],'-');
     return `<tr>
       <td class="placa">${placa}</td>
-      <td>${tipo}</td>
-      <td>${fechaHora(ent)}</td>
-      <td>${fechaHora(sal)}</td>
-      <td>${textoTiempo(campo(m,['detalleTiempo','detalle_tiempo']), ent, sal)}</td>
-      <td>${met}</td>
+      <td class="suave">${tipo}</td>
+      <td class="suave">${fechaHora(ent)}</td>
+      <td class="suave">${fechaHora(sal)}</td>
+      <td class="suave">${textoTiempo(campo(m,['detalleTiempo','detalle_tiempo']), ent, sal)}</td>
+      <td class="suave">${met}</td>
       <td class="text-end">${val !== null ? pesos(val) : '-'}</td>
     </tr>`;
   }).join('');
