@@ -28,6 +28,7 @@
 							'</div>',
 							'<div class="small text-muted">Debes abrir turno para poder registrar ingresos/salidas.</div>',
 						'</div>',
+						'<div id="vistaResumen" class="d-none"></div>',
 						'<div id="vistaCierre" class="d-none">',
 							'<div class="row g-2">',
 								'<div class="col-6">',
@@ -64,7 +65,9 @@
 					'<div class="modal-footer">',
 						'<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>',
 						'<button type="button" class="btn btn-primary" id="btnAbrirTurno">Abrir turno</button>',
-						'<button type="button" class="btn btn-success d-none" id="btnCerrarTurno">Cerrar e imprimir</button>',
+						'<button type="button" class="btn btn-success d-none" id="btnCerrarTurno">Cerrar turno</button>',
+						'<button type="button" class="btn btn-outline-primary d-none" id="btnPrintCierre58">Imprimir 58mm</button>',
+						'<button type="button" class="btn btn-outline-primary d-none" id="btnPrintCierre80">Imprimir 80mm</button>',
 					'</div>',
 				'</div>',
 			'</div>',
@@ -81,12 +84,19 @@
 	const vistaC = document.getElementById('vistaCierre');
 	const btnAbrir = document.getElementById('btnAbrirTurno');
 	const btnCerrar = document.getElementById('btnCerrarTurno');
+	const vistaR = document.getElementById('vistaResumen');
+	const btnP58 = document.getElementById('btnPrintCierre58');
+	const btnP80 = document.getElementById('btnPrintCierre80');
 
 	function openCierreModal(){
 		vistaA.classList.add('d-none');
+		vistaR.classList.add('d-none');
+		vistaR.innerHTML = '';
 		vistaC.classList.remove('d-none');
 		btnAbrir.classList.add('d-none');
 		btnCerrar.classList.remove('d-none');
+		btnP58.classList.add('d-none');
+		btnP80.classList.add('d-none');
 		alertBox.className = 'alert d-none';
 		fetchResumenEsperado();
 		modal.show();
@@ -262,22 +272,19 @@
 			}
 			turnoAbierto = false;
 			updateGuardUI();
-			setTimeout(()=>{
-				imprimirResumen({
-					user: usr,
-					expected: exp,
-					diff: diff,
-					obs: payload.observacion_cierre,
-					base_inicial: j.data.base,
-					stats: j.data.stats,
-					turno: j.data.turno
-				});
-				modal.hide();
-			}, 600);
+			mostrarResumenCierre({
+				user: usr,
+				expected: exp,
+				diff: diff,
+				obs: payload.observacion_cierre,
+				base_inicial: j.data.base,
+				stats: j.data.stats,
+				turno: j.data.turno
+			});
 		}catch(e){ showAlert('danger', e.message); }
 	});
 
-	function imprimirResumen(res){
+	function mostrarResumenCierre(res){
 		const html = [
 			'<div style="font-family:Arial,sans-serif;font-size:12px">',
 				'<h3 style="margin:0 0 8px">Cierre de Turno</h3>',
@@ -316,17 +323,18 @@
 			w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cierre de Turno</title><style>'+css+'</style></head><body><div class="wrap">'+html+'</div><script>window.print(); setTimeout(()=>window.close(), 300);<'+'/'+'script></body></html>');
 			w.document.close();
 		}
-		// Selector de tamaño (58mm / 80mm) con modal Bootstrap
-		ensureSizeModal();
-		const m = new bootstrap.Modal(document.getElementById('turnoPrintSizeModal'));
-		const b58 = document.getElementById('btnPrint58');
-		const b80 = document.getElementById('btnPrint80');
-		const on58 = ()=>{ printWidth(58); cleanup(); };
-		const on80 = ()=>{ printWidth(80); cleanup(); };
-		function cleanup(){ b58.removeEventListener('click', on58); b80.removeEventListener('click', on80); m.hide(); }
-		b58.addEventListener('click', on58);
-		b80.addEventListener('click', on80);
-		m.show();
+		// El resumen queda EN PANTALLA y el operador decide si imprime.
+		// Antes se abria sola la ventana de impresion: si no habia impresora o se
+		// cancelaba, el turno ya estaba cerrado en la base y el resumen se perdia
+		// sin ninguna forma de recuperarlo desde la interfaz.
+		vistaC.classList.add('d-none');
+		vistaR.innerHTML = html;
+		vistaR.classList.remove('d-none');
+		btnCerrar.classList.add('d-none');
+		btnP58.classList.remove('d-none');
+		btnP80.classList.remove('d-none');
+		btnP58.onclick = function(){ printWidth(58); };
+		btnP80.onclick = function(){ printWidth(80); };
 	}
 	function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
