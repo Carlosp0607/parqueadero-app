@@ -1,3 +1,17 @@
+// IMPORTANTE sobre las comillas en el SQL de este archivo.
+//
+// Las cadenas de texto dentro de una consulta van SIEMPRE en comillas simples:
+//     estado='abierto'      correcto
+//     estado="abierto"      rompe en produccion
+//
+// MySQL en Aiven corre con sql_mode ANSI_QUOTES. En ese modo las comillas dobles
+// no delimitan texto sino NOMBRES DE COLUMNA, asi que estado="abierto" se lee como
+// "la columna estado es igual a la columna abierto". Como esa columna no existe,
+// MySQL responde ER_BAD_FIELD_ERROR. En un MySQL local sin ANSI_QUOTES la misma
+// consulta funciona, y por eso el fallo solo aparecia desplegado.
+//
+// Esta fue la causa del bloqueante 1 de la revision: "Error abriendo turno".
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
@@ -74,7 +88,7 @@ function parsearPesos(valor) {
 
 async function getTurnoAbierto(id_empresa) {
     const [rows] = await pool.query(
-        'SELECT * FROM turnos WHERE id_empresa=? AND estado="abierto" ORDER BY fecha_apertura DESC LIMIT 1',
+        "SELECT * FROM turnos WHERE id_empresa=? AND estado='abierto' ORDER BY fecha_apertura DESC LIMIT 1",
         [id_empresa]
     );
     return rows[0] || null;
@@ -173,7 +187,7 @@ router.post('/abrir', async (req, res) => {
         const observacion = (req.body.observacion_apertura || '').toString().trim().slice(0, 255) || null;
 
         const [abiertos] = await pool.query(
-            'SELECT id_turno FROM turnos WHERE id_empresa=? AND estado="abierto"',
+            "SELECT id_turno FROM turnos WHERE id_empresa=? AND estado='abierto'",
             [id_empresa]
         );
         if (abiertos.length) {
@@ -231,7 +245,7 @@ router.post('/cerrar', async (req, res) => {
         await pool.query(
             `UPDATE turnos
              SET fecha_cierre=CURRENT_TIMESTAMP, total_efectivo=?, total_tarjeta=?, total_qr=?,
-                 total_general=?, diferencia=?, observacion_cierre=?, estado="cerrado"
+                 total_general=?, diferencia=?, observacion_cierre=?, estado='cerrado'
              WHERE id_turno=?`,
             [efectivo, tarjeta, qr, totalConteo, diff,
              (observacion_cierre || '').toString().trim().slice(0, 255) || null, id_turno]
