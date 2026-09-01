@@ -34,20 +34,20 @@
                         <form id="loginForm" class="needs-validation" novalidate>
                             <!-- Campo NIT Empresa -->
                             <div class="mb-4">
-                                <label for="empresa" class="form-label">NIT Empresa</label>
+                                <label for="empresa" class="form-label">NIT del parqueadero</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-primary text-white">
                                         <i class="fas fa-building"></i>
                                     </span>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           id="empresa" 
-                                           name="empresa" 
-                                           required 
-                                           placeholder="Ej: 900123456-7"
-                                           value="900123456-7">
+                                    <input type="text"
+                                           class="form-control"
+                                           id="empresa"
+                                           name="empresa"
+                                           required
+                                           autocomplete="organization"
+                                           placeholder="900123456-7">
                                     <div class="invalid-feedback">
-                                        Por favor ingrese el NIT de la empresa
+                                        Escribe el NIT del parqueadero
                                     </div>
                                 </div>
                             </div>
@@ -58,9 +58,10 @@
                                     <span class="input-group-text bg-primary text-white">
                                         <i class="fas fa-user"></i>
                                     </span>
-                                    <input type="text" class="form-control" id="usuario" name="usuario" required>
+                                    <input type="text" class="form-control" id="usuario" name="usuario"
+                                           autocomplete="username" required>
                                     <div class="invalid-feedback">
-                                        Por favor ingrese su usuario
+                                        Escribe tu usuario
                                     </div>
                                 </div>
                             </div>
@@ -71,12 +72,13 @@
                                     <span class="input-group-text bg-primary text-white">
                                         <i class="fas fa-lock"></i>
                                     </span>
-                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <input type="password" class="form-control" id="password" name="password"
+                                           autocomplete="current-password" required>
                                     <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                         <i class="fas fa-eye" id="toggleIcon"></i>
                                     </button>
                                     <div class="invalid-feedback">
-                                        Por favor ingrese su contraseña
+                                        Escribe tu contraseña
                                     </div>
                                 </div>
                             </div>
@@ -113,5 +115,37 @@
     <script src="js/footer.js"></script>
     <!-- Custom JS -->
     <script src="js/login.js"></script>
+    <script>
+    /* Recuerda el NIT del último ingreso en este equipo.
+       Reemplaza el NIT que antes venía quemado en el HTML.
+       No toca el envío del formulario: eso sigue en js/login.js. */
+    (function () {
+      'use strict';
+      var CLAVE = 'ps_ultimo_nit';
+      var campo = document.getElementById('empresa');
+      var form  = document.getElementById('loginForm');
+      if (!campo || !form) return;
+
+      try {
+        var guardado = localStorage.getItem(CLAVE);
+        if (guardado) campo.value = guardado;
+      } catch (e) { /* sin localStorage disponible */ }
+
+      // Fase de captura: corre antes que el manejador de login.js.
+      form.addEventListener('submit', function () {
+        var v = campo.value.trim();
+        try {
+          if (v) localStorage.setItem(CLAVE, v);
+        } catch (e) { /* sin localStorage disponible */ }
+      }, true);
+
+      if (campo.value) {
+        var u = document.getElementById('usuario');
+        if (u) u.focus();
+      } else {
+        campo.focus();
+      }
+    })();
+    </script>
 </body>
 </html>
