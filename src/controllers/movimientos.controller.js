@@ -132,7 +132,17 @@ exports.registrarEntrada = async (req, res) => {
                 placa,
                 tipo: tipos[0].nombre,
                 tipoCodigo: tipos[0].codigo,
-                fechaEntrada: creado[0].fecha_entrada
+                fechaEntrada: creado[0].fecha_entrada,
+                // El comprobante de ingreso imprime las tarifas vigentes.
+                // Sin este bloque el frontend reventaba al leer tarifa.valor_minuto
+                // y el ingreso quedaba guardado pero sin ningun aviso en pantalla.
+                tarifa: {
+                    id_tarifa: tarifa.id_tarifa,
+                    valor_minuto: Number(tarifa.valor_minuto || 0),
+                    valor_hora: Number(tarifa.valor_hora || 0),
+                    valor_dia_completo: Number(tarifa.valor_dia_completo || 0),
+                    modo_cobro: tarifa.modo_cobro || 'mixto'
+                }
             }
         });
     } catch (error) {
@@ -172,7 +182,7 @@ exports.calcularSalida = async (req, res) => {
         }
 
         const ahora = new Date();
-        const { minutos, total } = calcularTotal(tarifas[0], m.fecha_entrada, ahora);
+        const { minutos, total, detalleTiempo } = calcularTotal(tarifas[0], m.fecha_entrada, ahora);
 
         return res.json({
             success: true,
@@ -184,6 +194,15 @@ exports.calcularSalida = async (req, res) => {
                 fechaEntrada: m.fecha_entrada,
                 fechaSalida: ahora,
                 minutos,
+                // El comprobante muestra el tiempo desglosado y las tarifas aplicadas.
+                detalleTiempo,
+                tarifa: {
+                    id_tarifa: tarifas[0].id_tarifa,
+                    valor_minuto: Number(tarifas[0].valor_minuto || 0),
+                    valor_hora: Number(tarifas[0].valor_hora || 0),
+                    valor_dia_completo: Number(tarifas[0].valor_dia_completo || 0),
+                    modo_cobro: tarifas[0].modo_cobro || 'mixto'
+                },
                 total,
                 pagosList: []
             }
