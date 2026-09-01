@@ -1,228 +1,518 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CO">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ParkSystem - Dashboard</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="../css/dashboard.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkSystem - Inicio</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="../css/dashboard.css" rel="stylesheet">
+<style>
+  .panel { background:#fff; border:1px solid #dee2e6; border-radius:.5rem; }
+  .panel-cab { padding:.7rem 1rem; border-bottom:1px solid #dee2e6; font-weight:600; }
+  .panel-cuerpo { padding:1rem; }
+  .placa { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:700; letter-spacing:.06em; }
+  .punto { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
+  .punto.on  { background:#198754; box-shadow:0 0 0 3px rgba(25,135,84,.18); }
+  .punto.off { background:#adb5bd; }
+  .cifra { font-size:2rem; font-weight:700; line-height:1.1; }
+  .cifra-sm { font-size:1.3rem; font-weight:700; }
+  .rotulo { font-size:.85rem; color:#6c757d; }
+  .nota { font-size:.8rem; color:#adb5bd; }
+  .barra-cupo { height:.4rem; border-radius:.2rem; background:#e9ecef; overflow:hidden; }
+  .barra-cupo > div { height:100%; background:#0d6efd; }
+  .barra-cupo.lleno > div { background:#dc3545; }
+  .tipo-fila { display:flex; align-items:center; gap:.75rem; padding:.5rem 0; }
+  .tipo-fila + .tipo-fila { border-top:1px solid #f1f3f5; }
+</style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo-container">
-                <div class="logo-circle">
-                    <span class="logo-text">PS</span>
-                </div>
-            </div>
-            <h5 class="mt-3 text-white">ParkSystem</h5>
-        </div>
-        <nav class="sidebar-nav">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a href="dashboard.html" class="nav-link active">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="operacion.html" class="nav-link">
-                        <i class="fas fa-right-left"></i>
-                        <span>Operación</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="vehiculos.html" class="nav-link">
-                        <i class="fas fa-car"></i>
-                        <span>Vehículos</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="mensualidades.html" class="nav-link">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>Mensualidades</span>
-                    </a>
-                </li>
-                <li class="nav-item admin-only">
-                    <a href="configuracion.html" class="nav-link">
-                        <i class="fas fa-gear"></i>
-                        <span>Configuración</span>
-                    </a>
-                </li>
-                <li class="nav-item admin-only">
-                    <a href="tipos-vehiculos.html" class="nav-link">
-                        <i class="fas fa-tags"></i>
-                        <span>Tipos de Vehículos</span>
-                    </a>
-                </li>
-                <li class="nav-item admin-only">
-                    <a href="tarifas.html" class="nav-link">
-                        <i class="fas fa-money-bill-wave"></i>
-                        <span>Tarifas</span>
-                    </a>
-                </li>
-                <li class="nav-item admin-only">
-                    <a href="usuarios.html" class="nav-link">
-                        <i class="fas fa-users"></i>
-                        <span>Usuarios</span>
-                    </a>
-                </li>
-                <li class="nav-item admin-only">
-                    <a href="reportes.html" class="nav-link">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reportes</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="#" class="nav-link" id="btnLogout">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Cerrar Sesión</span>
-            </a>
-        </div>
+
+<div class="sidebar">
+  <div class="sidebar-footer">
+    <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span></a>
+  </div>
+</div>
+
+<div class="main-content">
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container-fluid">
+      <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
+      <span class="ms-2 d-flex align-items-center gap-2">
+        <span class="punto off" id="puntoTurno"></span>
+        <span class="small" id="textoTurno">Consultando…</span>
+      </span>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-4">
+
+    <div class="d-flex align-items-baseline flex-wrap gap-2 mb-3">
+      <h5 class="mb-0" id="saludo">Resumen de hoy</h5>
+      <span class="nota" id="fechaHoy"></span>
+      <span class="nota ms-auto" id="actualizado"></span>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-            <div class="container-fluid">
-                <button class="btn btn-link sidebar-toggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="navbar-collapse"><ul class="navbar-nav ms-auto"><li class="nav-item"><span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span></li></ul></div>
-            </div>
-        </nav>
-
-        <!-- Dashboard Content -->
-        <div class="container-fluid py-4">
-            <!-- Stats Cards -->
-            <div class="row g-4 mb-4">
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="card stat-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon bg-primary">
-                                    <i class="fas fa-car"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <h6 class="card-subtitle mb-1">Vehículos Registrados (por tipo)</h6>
-                                    <div class="d-flex gap-3 flex-wrap">
-                                        <div><small>Carros</small><div id="currCarros" class="fw-bold fs-4">0</div></div>
-                                        <div><small>Motos</small><div id="currMotos" class="fw-bold fs-4">0</div></div>
-                                        <div><small>Bicis</small><div id="currBicis" class="fw-bold fs-4">0</div></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="card stat-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon bg-success">
-                                    <i class="fas fa-money-bill-wave"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <h6 class="card-subtitle mb-1">Ingresos Hoy</h6>
-                                    <h3 class="card-title mb-0" id="todayIncome">$0</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="card stat-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon bg-warning">
-                                    <i class="fas fa-parking"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <h6 class="card-subtitle mb-1">Ocupación</h6>
-                                    <h3 class="card-title mb-0" id="kpiOcupacionDash">0%</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity & Quick Actions -->
-            <div class="row g-4">
-                <!-- Recent Activity -->
-                <div class="col-12 col-xl-8">
-                    <div class="card">
-                        <div class="card-header bg-white">
-                            <h5 class="card-title mb-0">Actividad Reciente</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Placa</th>
-                                            <th>Tipo</th>
-                                            <th>Entrada</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="recentActivityTable"></tbody>
-                                </table>
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <button class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
-                                    <span class="small text-muted" id="pageInfo">Página 1</span>
-                                    <button class="btn btn-outline-primary btn-sm" id="btnNext">Siguiente</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="col-12 col-xl-4">
-                    <div class="card">
-                        <div class="card-header bg-white">
-                            <h5 class="card-title mb-0">Acciones Rápidas</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-3">
-                                <a class="btn btn-primary btn-lg" href="operacion.html">
-                                    <i class="fas fa-plus-circle me-2"></i>Ir a Operación
-                                </a>
-                                
-                                <button class="btn btn-info btn-lg">
-                                    <i class="fas fa-print me-2"></i>Generar Reporte
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- CIFRAS -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-xl-3">
+        <div class="panel h-100">
+          <div class="panel-cuerpo">
+            <div class="rotulo">Adentro ahora</div>
+            <div class="cifra" id="cAdentro">–</div>
+            <div class="barra-cupo mt-2" id="barraCupo"><div style="width:0%"></div></div>
+            <div class="nota mt-1" id="notaCupo">&nbsp;</div>
+          </div>
         </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="panel h-100">
+          <div class="panel-cuerpo">
+            <div class="rotulo">Recaudado hoy</div>
+            <div class="cifra text-success" id="cRecaudo">–</div>
+            <div class="nota mt-2" id="notaRecaudo">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="panel h-100">
+          <div class="panel-cuerpo">
+            <div class="rotulo">Atendidos hoy</div>
+            <div class="cifra" id="cAtendidos">–</div>
+            <div class="nota mt-2">Vehículos que ya salieron</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="panel h-100">
+          <div class="panel-cuerpo">
+            <div class="rotulo">Deja cada uno</div>
+            <div class="cifra" id="cPromedio">–</div>
+            <div class="nota mt-2">Promedio por vehículo</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Toasts container -->
-    <div class="position-fixed top-0 end-0 p-3" style="z-index:1100">
-        <div id="toastContainer"></div>
+    <div class="row g-3">
+
+      <!-- POR TIPO -->
+      <div class="col-12 col-xl-4">
+        <div class="panel h-100">
+          <div class="panel-cab bg-light">Qué hay adentro</div>
+          <div class="panel-cuerpo" id="porTipo">
+            <div class="text-muted small">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÚLTIMOS -->
+      <div class="col-12 col-xl-8">
+        <div class="panel h-100">
+          <div class="panel-cab bg-light">Últimos en entrar</div>
+          <div class="panel-cuerpo p-0">
+            <div class="table-responsive" style="max-height:22rem; overflow:auto">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr><th>Placa</th><th>Tipo</th><th>Entró</th><th class="text-end">Lleva</th></tr>
+                </thead>
+                <tbody id="tbodyUltimos">
+                  <tr><td colspan="4" class="text-center text-muted py-4">Cargando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TURNO -->
+      <div class="col-12 col-xl-4">
+        <div class="panel h-100">
+          <div class="panel-cab bg-light">Caja del turno</div>
+          <div class="panel-cuerpo" id="cajaTurno">
+            <div class="text-muted small">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MENSUALIDADES -->
+      <div class="col-12 col-xl-4">
+        <div class="panel h-100">
+          <div class="panel-cab bg-light">Planes</div>
+          <div class="panel-cuerpo" id="panelPlanes">
+            <div class="text-muted small">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIGURACIÓN -->
+      <div class="col-12 col-xl-4">
+        <div class="panel h-100">
+          <div class="panel-cab bg-light">El parqueadero</div>
+          <div class="panel-cuerpo" id="panelEmpresa">
+            <div class="text-muted small">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
     </div>
-    <!-- Footer global (reutilizable). Relacionado con public/js/footer.js -->
-    <script src="../js/footer.js"></script>
-    <!-- Custom JS -->
-    <script src="../js/dashboard.js"></script>
-    <!-- Turnos (modal y gating) -->
-    <script src="../js/turnos.js"></script>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ============================================================
+   Pantalla de solo lectura. No registra ni modifica nada.
+   CFG - Rutas de API. Si alguna no coincide, se cambia SOLO aquí.
+   ============================================================ */
+const CFG = {
+  stats       : '/api/dashboard/stats',
+  turnoActual : '/api/turnos/actual',
+  turnoResumen: '/api/turnos/resumen',
+  activos     : '/api/movimientos/activos',
+  tipos       : ['/api/tipos-vehiculos/activos', '/api/tipos-vehiculos', '/api/tipos-vehiculo'],
+  empresa     : '/api/empresa/me',
+  config      : '/api/empresa/config',
+  mensualidades: ['/api/mensualidades', '/api/planes']
+};
+
+const $ = id => document.getElementById(id);
+
+function pesos(v){
+  return '$ ' + (Math.round(Number(v) || 0)).toLocaleString('es-CO', { maximumFractionDigits:0 });
+}
+function hora(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  return isNaN(d) ? String(iso) : d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+function textoTiempo(desde){
+  if(!desde) return '-';
+  const ms = Date.now() - new Date(desde).getTime();
+  if(ms < 0 || isNaN(ms)) return '-';
+  const min = Math.floor(ms/60000), h = Math.floor(min/60), m = min%60;
+  if(h >= 24){ const d = Math.floor(h/24); return d + (d===1?' día':' días'); }
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
+
+async function api(url, opciones = {}){
+  const headers = { 'Accept':'application/json', ...(opciones.headers||{}) };
+  const tok = localStorage.getItem('token') || localStorage.getItem('ps_token');
+  if(tok) headers['Authorization'] = 'Bearer ' + tok;
+
+  let res, cuerpo;
+  try{
+    res = await fetch(url, { ...opciones, headers, credentials:'include' });
+    const crudo = await res.text();
+    try { cuerpo = crudo ? JSON.parse(crudo) : {}; } catch { cuerpo = { message: crudo }; }
+  }catch(e){ throw new Error('Sin conexión con el servidor.'); }
+
+  if(!res.ok){
+    console.warn('API', url, res.status, cuerpo);
+    const err = new Error(cuerpo.message || cuerpo.error || ('Respondió ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
+  return cuerpo;
+}
+async function apiPrimera(rutas){
+  let ultimo;
+  for(const r of rutas){
+    try { return await api(r); }
+    catch(e){ ultimo = e; if(e.status && e.status !== 404) throw e; }
+  }
+  throw ultimo || new Error('Sin respuesta.');
+}
+function lista(r){
+  if(Array.isArray(r)) return r;
+  for(const k of ['data','movimientos','activos','rows','resultados','items','tipos','mensualidades'])
+    if(Array.isArray(r?.[k])) return r[k];
+  if(r?.data && typeof r.data === 'object')
+    for(const k of ['movimientos','rows','items','mensualidades'])
+      if(Array.isArray(r.data[k])) return r.data[k];
+  return [];
+}
+function campo(o, claves, def=null){
+  for(const k of claves) if(o && o[k] !== undefined && o[k] !== null) return o[k];
+  return def;
+}
+function vacio(cont, texto){
+  cont.innerHTML = '<div class="text-muted small">' + texto + '</div>';
+}
+
+/* ---------- fecha ---------- */
+(function(){
+  const d = new Date();
+  $('fechaHoy').textContent = d.toLocaleDateString('es-CO',
+    { weekday:'long', day:'numeric', month:'long' });
+  const h = d.getHours();
+  $('saludo').textContent = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
+})();
+
+(function(){
+  try{
+    const u = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || 'null');
+    const n = u && (u.nombre || u.usuario || u.username || u.nombre_usuario);
+    if(n) $('userName').textContent = n;
+  }catch(e){}
+})();
+
+/* ---------- turno ---------- */
+let TURNO = null, ABIERTO = false, RESUMEN = null;
+
+function recaudadoTurno(){
+  const r = RESUMEN?.data || RESUMEN || {};
+  const t = campo(r, ['total','total_recaudado','totalRecaudado','recaudado'], null);
+  if(t !== null) return Number(t) || 0;
+  const m = r.metodos || r.porMetodo || r.por_metodo;
+  if(Array.isArray(m)) return m.reduce((a,x) => a + (Number(campo(x,['total','valor','monto'],0))||0), 0);
+  if(m && typeof m === 'object') return Object.values(m).reduce((a,x) => a + (Number(x)||0), 0);
+  return 0;
+}
+
+async function cargarTurno(){
+  try{
+    const r = await api(CFG.turnoActual);
+    const t = r.turno || r.data || r;
+    ABIERTO = !!(t && (t.id || t.id_turno)) &&
+              String(campo(t,['estado'],'abierto')).toLowerCase() === 'abierto';
+    TURNO = ABIERTO ? t : null;
+  }catch(e){ ABIERTO = false; TURNO = null; }
+
+  if(ABIERTO){
+    try{ RESUMEN = await api(CFG.turnoResumen); }catch(e){ RESUMEN = null; }
+  }
+
+  const punto = $('puntoTurno'), texto = $('textoTurno'), caja = $('cajaTurno');
+
+  if(!ABIERTO){
+    punto.className = 'punto off';
+    texto.innerHTML = '<strong>Turno cerrado</strong>';
+    caja.innerHTML = '<div class="text-muted small">No hay turno abierto.<br>' +
+                     'Se abre desde <a href="vehiculos.html">Vehículos</a>.</div>';
+    return;
+  }
+
+  const desde = campo(TURNO, ['fecha_apertura','hora_apertura','created_at','fecha_inicio']);
+  const base  = Number(campo(TURNO, ['base_inicial','baseInicial','base'], 0)) || 0;
+  const rec   = recaudadoTurno();
+
+  punto.className = 'punto on';
+  texto.innerHTML = '<strong>Turno abierto</strong> desde ' + hora(desde);
+
+  let filas = '';
+  const r = RESUMEN?.data || RESUMEN || {};
+  const m = r.metodos || r.porMetodo || r.por_metodo;
+  if(Array.isArray(m) && m.length){
+    m.forEach(x => {
+      filas += `<div class="d-flex justify-content-between small py-1">
+                  <span class="text-muted">${campo(x,['metodo','metodo_pago','nombre'],'-')}</span>
+                  <span>${pesos(campo(x,['total','valor','monto'],0))}</span></div>`;
+    });
+  } else if(m && typeof m === 'object' && Object.keys(m).length){
+    Object.keys(m).forEach(k => {
+      filas += `<div class="d-flex justify-content-between small py-1">
+                  <span class="text-muted">${k}</span><span>${pesos(m[k])}</span></div>`;
+    });
+  }
+
+  caja.innerHTML =
+    `<div class="d-flex justify-content-between small py-1">
+       <span class="text-muted">Base inicial</span><span>${pesos(base)}</span></div>` +
+    filas +
+    `<div class="d-flex justify-content-between align-items-baseline border-top pt-2 mt-2">
+       <span class="rotulo">Debe haber en caja</span>
+       <span class="cifra-sm">${pesos(base + rec)}</span></div>
+     <div class="nota mt-2">Abierto desde ${hora(desde)}</div>`;
+}
+
+/* ---------- adentro y tipos ---------- */
+let ACTIVOS = [], TIPOS = [];
+
+async function cargarAdentro(){
+  try{ ACTIVOS = lista(await api(CFG.activos)); }
+  catch(e){ ACTIVOS = []; }
+
+  try{ TIPOS = lista(await apiPrimera(CFG.tipos)); }
+  catch(e){ TIPOS = []; }
+
+  $('cAdentro').textContent = ACTIVOS.length;
+
+  const cupos = TIPOS.reduce((a,t) =>
+    a + (Number(campo(t,['capacidad','cupos','capacidad_total'],0)) || 0), 0);
+
+  const barra = $('barraCupo');
+  if(cupos > 0){
+    const pct = Math.min(100, Math.round(ACTIVOS.length / cupos * 100));
+    barra.querySelector('div').style.width = pct + '%';
+    barra.classList.toggle('lleno', pct >= 90);
+    $('notaCupo').textContent = pct + '% de ' + cupos + ' cupos';
+  }else{
+    barra.style.display = 'none';
+    $('notaCupo').textContent = 'Sin cupos configurados';
+  }
+
+  // Agrupar por tipo
+  const cont = $('porTipo');
+  if(!ACTIVOS.length){ vacio(cont, 'No hay vehículos adentro.'); }
+  else{
+    const cuenta = {};
+    ACTIVOS.forEach(m => {
+      const t = campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'Sin tipo');
+      cuenta[t] = (cuenta[t] || 0) + 1;
+    });
+    cont.innerHTML = Object.keys(cuenta).sort((a,b) => cuenta[b]-cuenta[a]).map(t => {
+      const tipo = TIPOS.find(x =>
+        String(campo(x,['nombre','descripcion','tipo'],'')).toLowerCase() === String(t).toLowerCase());
+      const cap = tipo ? Number(campo(tipo,['capacidad','cupos','capacidad_total'],0)) || 0 : 0;
+      return `<div class="tipo-fila">
+                <span class="cifra-sm" style="min-width:2.5rem">${cuenta[t]}</span>
+                <span class="flex-grow-1">${t}</span>
+                ${cap ? `<span class="nota">de ${cap}</span>` : ''}
+              </div>`;
+    }).join('');
+  }
+
+  // Últimos en entrar
+  const tb = $('tbodyUltimos');
+  if(!ACTIVOS.length){
+    tb.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay vehículos adentro.</td></tr>';
+    return;
+  }
+  const orden = ACTIVOS.slice().sort((a,b) => {
+    const fa = new Date(campo(a,['fecha_entrada','hora_entrada','entrada','created_at'],0)).getTime() || 0;
+    const fb = new Date(campo(b,['fecha_entrada','hora_entrada','entrada','created_at'],0)).getTime() || 0;
+    return fb - fa;
+  }).slice(0, 15);
+
+  tb.innerHTML = orden.map(m => {
+    const ent = campo(m,['fecha_entrada','hora_entrada','entrada','created_at']);
+    return `<tr>
+      <td class="placa">${String(campo(m,['placa'],'-')).toUpperCase()}</td>
+      <td>${campo(m,['tipo_vehiculo','tipo','nombre_tipo'],'-')}</td>
+      <td>${hora(ent)}</td>
+      <td class="text-end text-muted">${textoTiempo(ent)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------- cifras del día ---------- */
+async function cargarStats(){
+  let s = null;
+  try{ s = await api(CFG.stats); }catch(e){ /* endpoint opcional */ }
+  const d = s?.data || s || {};
+
+  const recaudo = campo(d, ['ingresos_hoy','ingresosHoy','recaudado_hoy','total_hoy','ingresos'], null);
+  const atend   = campo(d, ['movimientos_hoy','tickets','atendidos_hoy','salidas_hoy','total_movimientos'], null);
+
+  const recNum = recaudo !== null ? Number(recaudo) : (ABIERTO ? recaudadoTurno() : null);
+  $('cRecaudo').textContent = recNum !== null ? pesos(recNum) : '–';
+  $('notaRecaudo').textContent = recaudo !== null ? 'Desde las 12 de la noche' :
+                                 (ABIERTO ? 'Desde que abrió el turno' : 'Sin turno abierto');
+
+  $('cAtendidos').textContent = atend !== null ? atend : '–';
+
+  if(recNum !== null && atend) $('cPromedio').textContent = pesos(recNum / atend);
+  else $('cPromedio').textContent = '–';
+}
+
+/* ---------- planes ---------- */
+async function cargarPlanes(){
+  const cont = $('panelPlanes');
+  let arr = [];
+  try{ arr = lista(await apiPrimera(CFG.mensualidades)); }
+  catch(e){ vacio(cont, 'No se pudieron cargar los planes.'); return; }
+
+  if(!arr.length){ vacio(cont, 'No hay planes registrados.'); return; }
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let activos = 0, porVencer = 0, vencidos = 0;
+
+  arr.forEach(x => {
+    const est = String(campo(x,['estado'],'')).toLowerCase();
+    const fin = campo(x,['fecha_fin','fechaFin','vence','fecha_vencimiento']);
+    if(est === 'cancelada') return;
+
+    if(fin){
+      const f = new Date(fin); f.setHours(0,0,0,0);
+      const dias = Math.round((f - hoy) / 86400000);
+      if(dias < 0){ vencidos++; return; }
+      if(dias <= 7){ porVencer++; activos++; return; }
+    }
+    if(est !== 'vencida') activos++; else vencidos++;
+  });
+
+  cont.innerHTML =
+    `<div class="d-flex justify-content-between align-items-baseline py-1">
+       <span class="rotulo">Al día</span><span class="cifra-sm text-success">${activos}</span></div>
+     <div class="d-flex justify-content-between align-items-baseline py-1">
+       <span class="rotulo">Vencen esta semana</span>
+       <span class="cifra-sm ${porVencer ? 'text-warning' : ''}">${porVencer}</span></div>
+     <div class="d-flex justify-content-between align-items-baseline py-1">
+       <span class="rotulo">Vencidos</span>
+       <span class="cifra-sm ${vencidos ? 'text-danger' : ''}">${vencidos}</span></div>
+     <div class="nota mt-2">Se manejan en <a href="mensualidades.html">Planes</a>.</div>`;
+}
+
+/* ---------- empresa ---------- */
+async function cargarEmpresa(){
+  const cont = $('panelEmpresa');
+  let e = null, c = null;
+  try{ e = await api(CFG.empresa); }catch(x){}
+  try{ c = await api(CFG.config); }catch(x){}
+
+  if(!e && !c){ vacio(cont, 'No se pudieron cargar los datos.'); return; }
+
+  const emp = e?.data || e || {};
+  const cfg = c?.data || c || {};
+
+  const nombre = campo(emp,['nombre','razon_social'],'—');
+  const nit    = campo(emp,['nit'],'—');
+  const ap     = campo(cfg,['hora_apertura','apertura'],null);
+  const ci     = campo(cfg,['hora_cierre','cierre'],null);
+  const h24    = campo(cfg,['abierto_24h','es_24h','abierto24'],0);
+  const iva    = campo(cfg,['iva','porcentaje_iva'],null);
+
+  const horario = Number(h24) ? 'Abierto 24 horas'
+                : (ap && ci ? String(ap).slice(0,5) + ' a ' + String(ci).slice(0,5) : '—');
+
+  cont.innerHTML =
+    `<div class="fw-semibold">${nombre}</div>
+     <div class="nota mb-3">NIT ${nit}</div>
+     <div class="d-flex justify-content-between small py-1">
+       <span class="text-muted">Horario</span><span>${horario}</span></div>
+     <div class="d-flex justify-content-between small py-1">
+       <span class="text-muted">IVA</span><span>${iva !== null ? iva + '%' : '—'}</span></div>
+     <div class="d-flex justify-content-between small py-1">
+       <span class="text-muted">Tipos de vehículo</span><span>${TIPOS.length || '—'}</span></div>
+     <div class="nota mt-2">Se cambia en <a href="configuracion.html">Configuración</a>.</div>`;
+}
+
+/* ---------- arranque ---------- */
+async function refrescar(){
+  await cargarTurno();
+  await cargarAdentro();
+  await cargarStats();
+  $('actualizado').textContent = 'Actualizado ' + hora(new Date().toISOString());
+}
+
+(async function init(){
+  await refrescar();
+  await cargarPlanes();
+  await cargarEmpresa();
+  setInterval(refrescar, 60000);
+})();
+</script>
+<script src="../js/menu.js"></script>
 </body>
 </html>
