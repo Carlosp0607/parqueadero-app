@@ -304,6 +304,8 @@
             document.getElementById('compIngresoBody').innerHTML = renderComprobante('INGRESO', b, null, empresaInfo);
             document.getElementById('compIngreso').classList.remove('d-none');
             document.getElementById('formIngreso').reset();
+            avisar('success', 'Ingreso registrado: <strong>' + b.placa + '</strong> (' + b.tipo + ')');
+            if (window.sincronizarEstadoTurno) window.sincronizarEstadoTurno();
         });
 
         // Salida
@@ -326,9 +328,17 @@
             
             // Guardar temporalmente (aún no está finalizado)
             ultimaSalida = f;
-            document.getElementById('compSalidaBody').innerHTML = renderComprobante('SALIDA', null, f, empresaInfo);
-            document.getElementById('compSalida').classList.remove('d-none');
+            // Pintar el comprobante no puede impedir el cobro. Si algo falla aqui,
+            // se registra en consola y el flujo sigue hasta el modal de pago.
+            try {
+                document.getElementById('compSalidaBody').innerHTML = renderComprobante('SALIDA', null, f, empresaInfo);
+                document.getElementById('compSalida').classList.remove('d-none');
+            } catch (errComp) {
+                console.error('No se pudo pintar el comprobante de salida:', errComp);
+                avisar('warning', 'El cobro se calculó, pero el comprobante no se pudo mostrar.');
+            }
             document.getElementById('formSalida').reset();
+            avisar('info', 'Total a cobrar por <strong>' + f.placa + '</strong>: ' + pesos(f.total));
 
             // Abrir modal de pago avanzado con método por defecto
             // El movimiento se finalizará SOLO cuando se confirme el pago
@@ -364,6 +374,55 @@
         }
 
         // Render de comprobante/factura compacto tipo ticket
+        // ------------------------------------------------------------------
+        // Helpers del comprobante.
+        //
+        // Nunca deben lanzar. Si el servidor no manda un campo, el comprobante
+        // sale incompleto pero la operacion continua. Antes un campo faltante
+        // (detalleTiempo, tarifa) tiraba un TypeError DESPUES de que el
+        // movimiento ya estaba registrado, y eso dejaba el ingreso sin aviso y
+        // la salida sin modal de pago: parecia que el boton no hacia nada.
+        // ------------------------------------------------------------------
+        function pesos(n){
+            return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(Number(n||0));
+        }
+
+        function tarifasHtml(t){
+            if (!t) return '';
+            return `<div>Tarifas</div>
+                    <div>Minuto: <strong>${pesos(t.valor_minuto)}</strong></div>
+                    <div>Hora: <strong>${pesos(t.valor_hora)}</strong></div>
+                    <div>Día: <strong>${pesos(t.valor_dia_completo)}</strong></div>`;
+        }
+
+        function tiempoHtml(salida){
+            const d = salida && salida.detalleTiempo;
+            if (d) return `${d.dias}d ${d.horas}h ${d.minutos}m`;
+            // Respaldo: si solo viene el total de minutos, se desglosa aqui.
+            const m = Number((salida && salida.minutos) || 0);
+            const dias = Math.floor(m / 1440);
+            const horas = Math.floor((m % 1440) / 60);
+            return `${dias}d ${horas}h ${m % 60}m`;
+        }
+
+        // Aviso visible arriba de la pantalla. El comprobante se pinta mas abajo
+        // y el operador no lo veia sin bajar el scroll: por eso el ingreso
+        // parecia no registrar nada.
+        function avisar(tipo, texto){
+            let cont = document.getElementById('avisosOperacion');
+            if (!cont){
+                cont = document.createElement('div');
+                cont.id = 'avisosOperacion';
+                cont.style.cssText = 'position:fixed;top:70px;right:20px;z-index:1080;max-width:360px';
+                document.body.appendChild(cont);
+            }
+            const a = document.createElement('div');
+            a.className = 'alert alert-' + tipo + ' alert-dismissible shadow';
+            a.innerHTML = texto + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            cont.appendChild(a);
+            setTimeout(function(){ a.remove(); }, 6000);
+        }
+
         function renderComprobante(tipo, ingreso, salida, empresa){
             const e = empresa || {};
             const header = `
@@ -406,10 +465,7 @@
                     <div>Tipo: <strong>${ingreso.tipo}</strong></div>
                     <div>Entrada: <strong>${new Date(ingreso.fechaEntrada).toLocaleString('es-CO')}</strong></div>
                     <hr/>
-                    <div>Tarifas</div>
-                    <div>Minuto: <strong>${ingreso.tarifa.valor_minuto}</strong></div>
-                    <div>Hora: <strong>${ingreso.tarifa.valor_hora}</strong></div>
-                    <div>Día: <strong>${ingreso.tarifa.valor_dia_completo}</strong></div>
+                    ${tarifasHtml(ingreso.tarifa)}
                     <hr/>
                     <div>Atendido por: ${localStorage.getItem('userName')||''}</div>
                     <div>Fecha impresión: ${new Date().toLocaleString('es-CO')}</div>
@@ -427,12 +483,9 @@
                 <div>Tipo: <strong>${salida.tipo}</strong></div>
                 <div>Entrada: <strong>${new Date(salida.fechaEntrada).toLocaleString('es-CO')}</strong></div>
                 <div>Salida: <strong>${new Date(salida.fechaSalida).toLocaleString('es-CO')}</strong></div>
-                <div>Tiempo: <strong>${salida.detalleTiempo.dias}d ${salida.detalleTiempo.horas}h ${salida.detalleTiempo.minutos}m</strong></div>
+                <div>Tiempo: <strong>${tiempoHtml(salida)}</strong></div>
                 <hr/>
-                <div>Tarifas</div>
-                <div>Minuto: <strong>${salida.tarifa.valor_minuto}</strong></div>
-                <div>Hora: <strong>${salida.tarifa.valor_hora}</strong></div>
-                <div>Día: <strong>${salida.tarifa.valor_dia_completo}</strong></div>
+                ${tarifasHtml(salida.tarifa)}
                 <hr/>
                 <div>Total a pagar: <strong>$${new Intl.NumberFormat('es-CO').format(salida.total)}</strong></div>
                 ${pagosHtml}
