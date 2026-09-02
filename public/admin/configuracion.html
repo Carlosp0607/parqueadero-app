@@ -1,223 +1,231 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CO">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ParkSystem - Configuración</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../css/dashboard.css" rel="stylesheet">
-    <script>
-        // Guard: requiere token y rol admin
-        if (!localStorage.getItem('token')) { window.location.href = '/'; }
-        if (localStorage.getItem('userRole') !== 'admin') { window.location.href = '/admin/dashboard'; }
-    </script>
-    <style>
-      .logo-caja { border:1px dashed #ced4da; border-radius:.5rem; padding:1rem; text-align:center; }
-      .avanzado-link { font-size:.9rem; text-decoration:none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParkSystem - Configuración</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="../css/dashboard.css" rel="stylesheet">
+<script>
+  // Guard: requiere token y rol admin
+  if (!localStorage.getItem('token')) { window.location.href = '/'; }
+  if (localStorage.getItem('userRole') !== 'admin') { window.location.href = '/admin/dashboard'; }
+</script>
+<style>
+  .lienzo { max-width:1100px; }
+
+  .rotulo { font-size:.75rem; color:#8a94a0; text-transform:uppercase; letter-spacing:.04em; }
+  .titulo-seccion { font-size:.9rem; font-weight:600; color:#495057; }
+  .suave { color:#adb5bd; }
+
+  .separador { border-left:1px solid #e9ecef; }
+
+  .campo-linea {
+    border:0; border-bottom:1px solid #dee2e6; border-radius:0;
+    box-shadow:none; padding-left:0; padding-right:0;
+  }
+  .campo-linea:focus { border-bottom-color:#0d6efd; box-shadow:none; background:transparent; }
+
+  .btn-texto {
+    background:none; border:0; padding:0; color:#0d6efd;
+    font-size:.85rem; text-decoration:none;
+  }
+  .btn-texto:disabled { color:#ced4da; }
+
+  .linea-fina { border-top:1px solid #e9ecef; }
+
+  .avanzado-link { font-size:.85rem; text-decoration:none; color:#0d6efd; }
+
+  .alert { border:0; }
+
+  @media (max-width: 1199px){
+    .separador { border-left:0; border-top:1px solid #e9ecef; padding-top:2rem; margin-top:2rem; }
+  }
+</style>
 </head>
 <body>
-    <!-- El menú lo escribe public/js/menu.js. -->
-    <div class="sidebar">
-        <div class="sidebar-footer">
-            <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span></a>
-        </div>
+
+<!-- El menú lo escribe public/js/menu.js. -->
+<div class="sidebar">
+  <div class="sidebar-footer">
+    <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span></a>
+  </div>
+</div>
+
+<div class="main-content">
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-white">
+    <div class="container-fluid">
+      <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <span class="nav-link small"><span id="userName">Usuario</span></span>
+        </li>
+      </ul>
     </div>
+  </nav>
 
-    <div class="main-content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-            <div class="container-fluid">
-                <button class="btn btn-link sidebar-toggle"><i class="fas fa-bars"></i></button>
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <span class="nav-link"><i class="fas fa-user-circle me-2"></i><span id="userName">Usuario</span></span>
-                    </li>
-                </ul>
+  <div class="container lienzo py-5">
+
+    <div class="row g-4">
+
+      <!-- DATOS DEL PARQUEADERO -->
+      <div class="col-12 col-xl-6">
+        <div class="titulo-seccion">Datos del parqueadero</div>
+        <div class="small suave mb-4">Aparecen en los recibos que se le entregan al cliente.</div>
+
+        <form id="formEmpresa">
+
+          <div class="rotulo mb-1">Nombre del parqueadero</div>
+          <input type="text" id="e_nombre" class="form-control campo-linea mb-4" required>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="rotulo mb-1">NIT</div>
+              <input type="text" id="e_nit" class="form-control campo-linea" required>
             </div>
-        </nav>
-
-        <div class="container-fluid py-4">
-            <div class="row g-4">
-
-                <!-- EMPRESA -->
-                <div class="col-12 col-xl-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-white">
-                            <h6 class="mb-0">Datos del parqueadero</h6>
-                            <div class="text-muted small">Aparecen en los recibos que se entregan al cliente.</div>
-                        </div>
-                        <div class="card-body">
-                            <form id="formEmpresa" class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label">Nombre del parqueadero</label>
-                                    <input type="text" id="e_nombre" class="form-control" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">NIT</label>
-                                    <input type="text" id="e_nit" class="form-control" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Teléfono</label>
-                                    <input type="text" id="e_telefono" class="form-control">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Dirección</label>
-                                    <input type="text" id="e_direccion" class="form-control">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Correo</label>
-                                    <input type="email" id="e_email" class="form-control">
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label">Logo</label>
-                                    <div class="logo-caja">
-                                        <img id="e_logo_preview" src="" alt="" class="img-fluid rounded mb-2 d-none" style="max-height:90px">
-                                        <input type="file" id="e_logo_file" class="form-control mb-2" accept="image/*">
-                                        <button type="button" id="btnUploadLogo" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fas fa-upload me-1"></i>Subir logo
-                                        </button>
-                                        <div class="form-text mt-2">Escoge la imagen y luego pulsa Subir.</div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div id="alertEmpresa" class="alert d-none" role="alert"></div>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="card-footer bg-white text-end">
-                            <button class="btn btn-primary" id="btnSaveEmpresa">
-                                <i class="fas fa-save me-1"></i>Guardar datos
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- OPERACIÓN -->
-                <div class="col-12 col-xl-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-white">
-                            <h6 class="mb-0">Cómo opera el parqueadero</h6>
-                            <div class="text-muted small">Horario e impuestos.</div>
-                        </div>
-                        <div class="card-body">
-                            <form id="formConfig" class="row g-3">
-
-                                <div class="col-12">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="c_24h">
-                                        <label class="form-check-label fw-semibold" for="c_24h">Abrimos las 24 horas</label>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6" id="wrapApertura">
-                                    <label class="form-label">Abre a las</label>
-                                    <input type="time" id="c_apertura" class="form-control" required>
-                                </div>
-                                <div class="col-md-6" id="wrapCierre">
-                                    <label class="form-label">Cierra a las</label>
-                                    <input type="time" id="c_cierre" class="form-control" required>
-                                </div>
-
-                                <div class="col-12"><hr class="my-1"></div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label">IVA</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" min="0" id="c_iva" class="form-control" required>
-                                        <span class="input-group-text">%</span>
-                                    </div>
-                                    <div class="form-text">Pon 0 si tus tarifas ya lo incluyen.</div>
-                                </div>
-
-                                <div class="col-12">
-                                    <a class="avanzado-link" data-bs-toggle="collapse" href="#avanzado" role="button">
-                                        <i class="fas fa-chevron-down me-1"></i>Opciones avanzadas
-                                    </a>
-                                    <div class="collapse mt-3" id="avanzado">
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label">Moneda</label>
-                                                <input type="text" id="c_moneda" class="form-control" value="COP" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Zona horaria</label>
-                                                <input type="text" id="c_tz" class="form-control" value="America/Bogota" required>
-                                            </div>
-                                            <div class="col-12">
-                                                <div class="form-text">
-                                                    Los cupos de cada tipo de vehículo se configuran en
-                                                    <a href="tipos-vehiculos.html">Tipos de Vehículos</a>.
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div id="alertConfig" class="alert d-none" role="alert"></div>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="card-footer bg-white text-end">
-                            <button class="btn btn-primary" id="btnSaveConfig">
-                                <i class="fas fa-save me-1"></i>Guardar configuración
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
+            <div class="col-md-6">
+              <div class="rotulo mb-1">Teléfono</div>
+              <input type="text" id="e_telefono" class="form-control campo-linea">
             </div>
+          </div>
+
+          <div class="rotulo mb-1">Dirección</div>
+          <input type="text" id="e_direccion" class="form-control campo-linea mb-4">
+
+          <div class="rotulo mb-1">Correo</div>
+          <input type="email" id="e_email" class="form-control campo-linea mb-4">
+
+          <div class="rotulo mb-2">Logo</div>
+          <img id="e_logo_preview" src="" alt="" class="img-fluid mb-3 d-none" style="max-height:80px">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <input type="file" id="e_logo_file" class="form-control form-control-sm campo-linea" accept="image/*" style="max-width:18rem">
+            <button type="button" id="btnUploadLogo" class="btn-texto text-nowrap">Subir logo</button>
+          </div>
+          <div class="small suave mt-2">Escoge la imagen y luego pulsa Subir.</div>
+
+          <div id="alertEmpresa" class="alert d-none mt-4 py-2 small" role="alert"></div>
+        </form>
+
+        <div class="pt-4 mt-4 linea-fina">
+          <button class="btn btn-primary" id="btnSaveEmpresa">Guardar datos</button>
         </div>
+      </div>
+
+      <!-- CÓMO OPERA -->
+      <div class="col-12 col-xl-6 separador">
+        <div class="ps-xl-5">
+
+          <div class="titulo-seccion">Cómo opera el parqueadero</div>
+          <div class="small suave mb-4">Horario e impuestos.</div>
+
+          <form id="formConfig">
+
+            <div class="form-check form-switch mb-4">
+              <input class="form-check-input" type="checkbox" id="c_24h">
+              <label class="form-check-label" for="c_24h">Abrimos las 24 horas</label>
+            </div>
+
+            <div class="row g-4 mb-4">
+              <div class="col-md-6" id="wrapApertura">
+                <div class="rotulo mb-1">Abre a las</div>
+                <input type="time" id="c_apertura" class="form-control campo-linea" required>
+              </div>
+              <div class="col-md-6" id="wrapCierre">
+                <div class="rotulo mb-1">Cierra a las</div>
+                <input type="time" id="c_cierre" class="form-control campo-linea" required>
+              </div>
+            </div>
+
+            <div class="pt-4 mt-4 linea-fina">
+              <div class="rotulo mb-1">IVA</div>
+              <div class="d-flex align-items-center gap-2" style="max-width:9rem">
+                <input type="number" step="0.01" min="0" id="c_iva" class="form-control campo-linea" required>
+                <span class="suave">%</span>
+              </div>
+              <div class="small suave mt-2">Pon 0 si tus tarifas ya lo incluyen.</div>
+            </div>
+
+            <div class="pt-4 mt-4 linea-fina">
+              <a class="avanzado-link" data-bs-toggle="collapse" href="#avanzado" role="button">
+                Opciones avanzadas
+              </a>
+              <div class="collapse mt-4" id="avanzado">
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <div class="rotulo mb-1">Moneda</div>
+                    <input type="text" id="c_moneda" class="form-control campo-linea" value="COP" required>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="rotulo mb-1">Zona horaria</div>
+                    <input type="text" id="c_tz" class="form-control campo-linea" value="America/Bogota" required>
+                  </div>
+                </div>
+                <div class="small suave mt-3">
+                  Los cupos de cada tipo de vehículo se configuran en <a href="tarifas.html">Tarifas</a>.
+                </div>
+              </div>
+            </div>
+
+            <div id="alertConfig" class="alert d-none mt-4 py-2 small" role="alert"></div>
+          </form>
+
+          <div class="pt-4 mt-4 linea-fina">
+            <button class="btn btn-primary" id="btnSaveConfig">Guardar configuración</button>
+          </div>
+
+        </div>
+      </div>
+
     </div>
+  </div>
+</div>
 
-    <div class="position-fixed top-0 end-0 p-3" style="z-index:1100"><div id="toastContainer"></div></div>
+<div class="position-fixed top-0 end-0 p-3" style="z-index:1100"><div id="toastContainer"></div></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/footer.js"></script>
-    <script src="../js/configuracion.js"></script>
-    <script src="../js/menu.js"></script>
-    <script>
-    /* Solo detalles de la vista. El guardado sigue en configuracion.js. */
-    (function () {
-      'use strict';
-      var $ = function (id) { return document.getElementById(id); };
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/configuracion.js"></script>
+<script src="../js/menu.js"></script>
+<script>
+/* Solo detalles de la vista. El guardado sigue en configuracion.js. */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
 
-      var sw = $('c_24h');
+  var sw = $('c_24h');
 
-      function aplicar24h() {
-        var abierto24 = sw && sw.checked;
-        ['wrapApertura', 'wrapCierre'].forEach(function (id) {
-          var w = $(id);
-          if (w) w.classList.toggle('d-none', abierto24);
-        });
-      }
+  function aplicar24h() {
+    var abierto24 = sw && sw.checked;
+    ['wrapApertura', 'wrapCierre'].forEach(function (id) {
+      var w = $(id);
+      if (w) w.classList.toggle('d-none', abierto24);
+    });
+  }
 
-      if (sw) {
-        sw.addEventListener('change', aplicar24h);
-        aplicar24h();
-        // configuracion.js carga los datos despues; se reevalua.
-        setTimeout(aplicar24h, 800);
-      }
+  if (sw) {
+    sw.addEventListener('change', aplicar24h);
+    aplicar24h();
+    // configuracion.js carga los datos despues; se reevalua.
+    setTimeout(aplicar24h, 800);
+  }
 
-      // Vista previa del logo antes de subirlo.
-      var file = $('e_logo_file'), prev = $('e_logo_preview');
-      if (file && prev) {
-        file.addEventListener('change', function () {
-          var f = this.files && this.files[0];
-          if (!f) return;
-          var lector = new FileReader();
-          lector.onload = function (ev) {
-            prev.src = ev.target.result;
-            prev.classList.remove('d-none');
-          };
-          lector.readAsDataURL(f);
-        });
-      }
-    })();
-    </script>
+  // Vista previa del logo antes de subirlo.
+  var file = $('e_logo_file'), prev = $('e_logo_preview');
+  if (file && prev) {
+    file.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var lector = new FileReader();
+      lector.onload = function (ev) {
+        prev.src = ev.target.result;
+        prev.classList.remove('d-none');
+      };
+      lector.readAsDataURL(f);
+    });
+  }
+})();
+</script>
 </body>
 </html>
