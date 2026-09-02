@@ -62,7 +62,6 @@
   .total-cobro { font-size:2.6rem; font-weight:600; line-height:1.1; letter-spacing:-.02em; }
   #cobroBox { display:none; }
 
-  .cuadre { font-size:1.25rem; font-weight:600; }
   .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
 
   .btn-texto {
@@ -104,7 +103,7 @@
 
   <div class="container lienzo">
 
-    <!-- TURNO -->
+    <!-- ESTADO DEL TURNO (solo lectura; el turno se abre y cierra en Inicio) -->
     <div class="barra-turno d-flex align-items-center flex-wrap gap-3">
       <span class="d-flex align-items-center gap-2 small">
         <span class="punto off" id="puntoTurno"></span>
@@ -114,7 +113,6 @@
         <span class="small suave d-none" id="wrapRecaudo">
           Recaudado <span class="text-success fw-semibold" id="recaudoTurno">$ 0</span>
         </span>
-        <button class="btn-texto" id="btnTurno" disabled>…</button>
       </span>
     </div>
 
@@ -145,8 +143,8 @@
 
           <div id="bloqueoTurno" class="d-none">
             <div class="vacio">
-              <div class="mb-3">El turno está cerrado. Ábrelo para registrar entradas y cobros.</div>
-              <button class="btn btn-success" id="btnAbrirDesdeBloqueo">Abrir turno</button>
+              <div class="mb-3">El turno está cerrado. Ábrelo en Inicio para registrar entradas y cobros.</div>
+              <a class="btn btn-success" href="dashboard.html">Ir a Inicio</a>
             </div>
           </div>
 
@@ -277,54 +275,6 @@
   </div>
 </div>
 
-<!-- ABRIR TURNO -->
-<div class="modal fade" id="modalAbrir" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content">
-      <div class="modal-header"><h6 class="modal-title">Abrir turno</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div class="rotulo mb-2">¿Con cuánta plata arranca la caja?</div>
-        <div class="input-group">
-          <span class="input-group-text">$</span>
-          <input type="number" class="form-control" id="baseInicial" value="50000" min="0" step="1000">
-        </div>
-        <div class="small suave mt-2" id="ecoBase"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-success" id="btnConfirmarAbrir">Abrir turno</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CERRAR TURNO -->
-<div class="modal fade" id="modalCerrar" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h6 class="modal-title">Cerrar turno</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <table class="table limpia mb-4">
-          <tbody id="tbodyCierre"></tbody>
-        </table>
-
-        <div class="rotulo mb-2">¿Cuánta plata hay en la caja?</div>
-        <div class="input-group mb-3">
-          <span class="input-group-text">$</span>
-          <input type="number" class="form-control" id="conteoCaja" min="0" step="1000" placeholder="0">
-        </div>
-        <div id="cuadre" class="text-center"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-danger" id="btnConfirmarCerrar">Cerrar turno</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- NUEVO TIPO -->
 <div class="modal fade" id="modalTipo" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -362,14 +312,15 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /* ============================================================
-   CFG - Rutas de API. Si alguna no coincide, se cambia SOLO aquí.
+   Vehiculos: entradas, cobros e historial.
+   El turno se abre y se cierra en Inicio. Aqui solo se LEE su estado
+   para bloquear la pantalla cuando esta cerrado.
+   CFG - Rutas de API. Si alguna no coincide, se cambia SOLO aqui.
    Las que son arreglo se prueban en orden hasta que una responda.
    ============================================================ */
 const CFG = {
   turnoActual : '/api/turnos/actual',
   turnoResumen: '/api/turnos/resumen',
-  turnoAbrir  : '/api/turnos/abrir',
-  turnoCerrar : '/api/turnos/cerrar',
   tipos       : ['/api/tipos-vehiculos/activos', '/api/tipos-vehiculos', '/api/tipos-vehiculo'],
   tipoCrear   : '/api/tipos-vehiculos',
   activos     : '/api/movimientos/activos',
@@ -388,6 +339,19 @@ function hora(iso){
   if(!iso) return '-';
   const d = new Date(iso);
   return isNaN(d) ? String(iso) : d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+function fechaCorta(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  if(isNaN(d)) return String(iso);
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
+}
+function esHoy(iso){
+  if(!iso) return false;
+  const d = new Date(iso);
+  if(isNaN(d)) return false;
+  const h = new Date();
+  return d.getFullYear()===h.getFullYear() && d.getMonth()===h.getMonth() && d.getDate()===h.getDate();
 }
 function fechaHora(iso){
   if(!iso) return '-';
@@ -475,7 +439,7 @@ function campo(o, claves, def=null){
 }
 
 const S = {
-  abierto:false, turno:null, resumen:null,
+  abierto:false, turno:null, recaudado:0,
   activos:[], cobro:null,
   hist:{ pagina:1, porPagina:25, total:0 }
 };
@@ -489,163 +453,51 @@ const S = {
   }catch(e){}
 })();
 
-/* ================= TURNO ================= */
+/* ================= TURNO (solo lectura) ================= */
 async function sincronizarTurno(){
   try{
     const r = await api(CFG.turnoActual);
-    const t = r.turno || r.data || r;
-    S.abierto = !!(t && (t.id || t.id_turno)) &&
+    const t = r.data || r.turno || null;
+    S.abierto = !!(t && (t.id_turno || t.id)) &&
                 String(campo(t,['estado'],'abierto')).toLowerCase() === 'abierto';
     S.turno = S.abierto ? t : null;
   }catch(e){
     S.abierto = false; S.turno = null;
     console.warn('turno:', e.message);
   }
+
+  /* El backend devuelve { data: { turno, totales, stats } }. */
+  S.recaudado = 0;
   if(S.abierto){
-    try{ S.resumen = await api(CFG.turnoResumen); }
-    catch(e){ S.resumen = null; }
-  } else { S.resumen = null; }
+    try{
+      const r = await api(CFG.turnoResumen);
+      S.recaudado = Number(r?.data?.totales?.total || 0);
+    }catch(e){}
+  }
   pintarTurno();
 }
 
-function totalRecaudado(){
-  const r = S.resumen?.data || S.resumen || {};
-  const t = campo(r, ['total','total_recaudado','totalRecaudado','recaudado'], null);
-  if(t !== null) return Number(t) || 0;
-  const m = r.metodos || r.porMetodo || r.por_metodo;
-  if(Array.isArray(m)) return m.reduce((a,x) => a + (Number(campo(x,['total','valor','monto'],0))||0), 0);
-  if(m && typeof m === 'object') return Object.values(m).reduce((a,x) => a + (Number(x)||0), 0);
-  return 0;
-}
-
 function pintarTurno(){
-  const punto = $('puntoTurno'), texto = $('textoTurno'), btn = $('btnTurno');
+  const punto = $('puntoTurno'), texto = $('textoTurno');
 
   if(S.abierto){
     punto.className = 'punto on';
     const desde = campo(S.turno, ['fecha_apertura','hora_apertura','created_at','fecha_inicio']);
     const base  = campo(S.turno, ['base_inicial','baseInicial','base'], null);
-    texto.innerHTML = 'Turno abierto desde ' + hora(desde) +
+    const cuando = esHoy(desde) ? hora(desde) : fechaCorta(desde) + ', ' + hora(desde);
+    texto.innerHTML = 'Turno abierto desde ' + cuando +
                       (base !== null ? ' <span class="suave">· base ' + pesos(base) + '</span>' : '');
-    btn.textContent = 'Cerrar turno';
-    btn.style.color = '#dc3545';
     $('wrapRecaudo').classList.remove('d-none');
-    $('recaudoTurno').textContent = pesos(totalRecaudado());
+    $('recaudoTurno').textContent = pesos(S.recaudado);
   }else{
     punto.className = 'punto off';
-    texto.textContent = 'Turno cerrado';
-    btn.textContent = 'Abrir turno';
-    btn.style.color = '#198754';
+    texto.innerHTML = 'Turno cerrado <a href="dashboard.html" class="ms-2">Abrirlo en Inicio</a>';
     $('wrapRecaudo').classList.add('d-none');
   }
-  btn.disabled = false;
 
   $('bloqueoTurno').classList.toggle('d-none', S.abierto);
   $('zonaTrabajo').classList.toggle('d-none', !S.abierto);
 }
-
-function abrirModalAbrir(){
-  bootstrap.Modal.getOrCreateInstance($('modalAbrir')).show();
-}
-
-$('btnTurno').addEventListener('click', async () => {
-  if(!S.abierto){ abrirModalAbrir(); return; }
-  await prepararCierre();
-});
-$('btnAbrirDesdeBloqueo').addEventListener('click', abrirModalAbrir);
-
-$('baseInicial').addEventListener('input', function(){
-  $('ecoBase').textContent = this.value ? pesos(this.value) : '';
-});
-$('modalAbrir').addEventListener('shown.bs.modal', () => {
-  $('ecoBase').textContent = pesos($('baseInicial').value);
-  $('baseInicial').select();
-});
-
-$('btnConfirmarAbrir').addEventListener('click', async () => {
-  const btn = $('btnConfirmarAbrir');
-  const base = parseInt(String($('baseInicial').value).replace(/[^\d]/g,''), 10);
-  if(!Number.isFinite(base)) return avisar('alerta','Escribe con cuánto arranca la caja.');
-
-  btn.disabled = true; btn.textContent = 'Abriendo…';
-  try{
-    await api(CFG.turnoAbrir, { method:'POST', body: JSON.stringify({ base_inicial: base, baseInicial: base }) });
-    bootstrap.Modal.getInstance($('modalAbrir')).hide();
-    avisar('ok','Turno abierto con ' + pesos(base) + ' en caja.');
-    await sincronizarTurno();
-    await cargarActivos();
-    $('inPlaca').focus();
-  }catch(e){ avisar('error', e.message); }
-  finally{ btn.disabled = false; btn.textContent = 'Abrir turno'; }
-});
-
-async function prepararCierre(){
-  const base = Number(campo(S.turno, ['base_inicial','baseInicial','base'], 0)) || 0;
-  const rec  = totalRecaudado();
-
-  let filas = `<tr><td>Base inicial</td><td class="text-end">${pesos(base)}</td></tr>`;
-
-  const r = S.resumen?.data || S.resumen || {};
-  const m = r.metodos || r.porMetodo || r.por_metodo;
-  if(Array.isArray(m)){
-    m.forEach(x => {
-      filas += `<tr><td class="ps-3 suave">${campo(x,['metodo','metodo_pago','nombre'],'-')}</td>
-                    <td class="text-end suave">${pesos(campo(x,['total','valor','monto'],0))}</td></tr>`;
-    });
-  } else if(m && typeof m === 'object'){
-    Object.keys(m).forEach(k => {
-      filas += `<tr><td class="ps-3 suave">${k}</td><td class="text-end suave">${pesos(m[k])}</td></tr>`;
-    });
-  }
-
-  filas += `<tr><td>Recaudado</td><td class="text-end">${pesos(rec)}</td></tr>`;
-  filas += `<tr><td class="fw-semibold">Debe haber en caja</td>
-                <td class="text-end fw-semibold">${pesos(base + rec)}</td></tr>`;
-
-  $('tbodyCierre').innerHTML = filas;
-  $('conteoCaja').value = '';
-  $('cuadre').innerHTML = '';
-  $('modalCerrar').dataset.esperado = String(base + rec);
-
-  bootstrap.Modal.getOrCreateInstance($('modalCerrar')).show();
-}
-
-$('conteoCaja').addEventListener('input', function(){
-  const esperado = Number($('modalCerrar').dataset.esperado) || 0;
-  const contado  = Number(this.value);
-  const caja     = $('cuadre');
-
-  if(this.value === ''){ caja.innerHTML = ''; return; }
-
-  const dif = contado - esperado;
-  if(dif === 0){
-    caja.innerHTML = '<span class="cuadre text-success">Cuadra exacto</span>';
-  }else if(dif > 0){
-    caja.innerHTML = '<span class="cuadre text-primary">Sobran ' + pesos(dif) + '</span>';
-  }else{
-    caja.innerHTML = '<span class="cuadre text-danger">Faltan ' + pesos(Math.abs(dif)) + '</span>';
-  }
-});
-
-$('btnConfirmarCerrar').addEventListener('click', async () => {
-  const btn = $('btnConfirmarCerrar');
-  const contado = $('conteoCaja').value;
-
-  btn.disabled = true; btn.textContent = 'Cerrando…';
-  try{
-    const cuerpo = {};
-    if(contado !== ''){
-      cuerpo.conteo_caja = Number(contado);
-      cuerpo.efectivo_contado = Number(contado);
-    }
-    const r = await api(CFG.turnoCerrar, { method:'POST', body: JSON.stringify(cuerpo) });
-    const total = campo(r.turno||r.data||r, ['total_recaudado','totalRecaudado','total'], null);
-    bootstrap.Modal.getInstance($('modalCerrar')).hide();
-    avisar('ok','Turno cerrado.' + (total!==null ? ' Recaudado ' + pesos(total) + '.' : ''));
-    await sincronizarTurno();
-  }catch(e){ avisar('error', e.message); }
-  finally{ btn.disabled = false; btn.textContent = 'Cerrar turno'; }
-});
 
 /* ================= TIPOS ================= */
 let RUTA_TIPOS = null;
