@@ -433,23 +433,4 @@ router.get('/detalle/:id', sanitizeIdParam('id'), async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// TEMPORAL - borrar este bloque despues de correrlo UNA vez.
-//
-// La tabla pagos tenia DOS validaciones del metodo de pago: el ENUM de la
-// columna y un CHECK llamado chk_metodo_pago. El ALTER anterior amplio el ENUM
-// a 7 metodos, pero el CHECK siguio permitiendo solo los 3 viejos, asi que
-// cobrar con Nequi o Bre-B fallaba con "Check constraint is violated".
-// El ENUM ya valida por si solo, el CHECK sobra.
-// ---------------------------------------------------------------------------
-router.get('/_alter2', async (req, res) => {
-    try {
-        await pool.query('ALTER TABLE pagos DROP CHECK chk_metodo_pago');
-        const [pagos] = await pool.query("SHOW COLUMNS FROM pagos LIKE 'metodo_pago'");
-        res.json({ success: true, mensaje: 'CHECK eliminado', pagos });
-    } catch (err) {
-        responderError(res, 'GET /_alter2', err, 'Error quitando el CHECK');
-    }
-});
-
 module.exports = router;
