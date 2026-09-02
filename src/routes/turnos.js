@@ -94,23 +94,54 @@ async function getTurnoAbierto(id_empresa) {
     return rows[0] || null;
 }
 
+// ---------------------------------------------------------------------------
+// Totales del sistema, agrupados para el arqueo de caja.
+//
+// La tabla pagos acepta 7 metodos: efectivo, tarjeta, QR, nequi, daviplata,
+// breb y transferencia. Pero al cerrar caja solo se cuenta a mano el EFECTIVO.
+// Lo demas llega al banco y se verifica mirando el celular o el datafono.
+//
+// Por eso el arqueo agrupa en tres:
+//   efectivo   lo que hay fisicamente en el cajon
+//   tarjeta    lo que reporta el datafono
+//   digital    QR + nequi + daviplata + breb + transferencia
+//
+// El campo se sigue llamando 'qr' por compatibilidad con la columna total_qr
+// de la tabla turnos y con los cierres viejos. Se devuelve tambien 'digital'
+// con el mismo valor, y 'detalle' con el desglose real por si se necesita.
+// ---------------------------------------------------------------------------
 async function getTotalesSistema(id_empresa, fecha_desde, fecha_hasta) {
     const [rows] = await pool.query(
         `SELECT 
             SUM(CASE WHEN metodo_pago='efectivo' THEN monto ELSE 0 END) AS efectivo,
             SUM(CASE WHEN metodo_pago='tarjeta' THEN monto ELSE 0 END) AS tarjeta,
-            SUM(CASE WHEN metodo_pago='QR' THEN monto ELSE 0 END) AS qr,
+            SUM(CASE WHEN metodo_pago IN ('QR','nequi','daviplata','breb','transferencia')
+                     THEN monto ELSE 0 END) AS digital,
+            SUM(CASE WHEN metodo_pago='QR' THEN monto ELSE 0 END) AS solo_qr,
+            SUM(CASE WHEN metodo_pago='nequi' THEN monto ELSE 0 END) AS nequi,
+            SUM(CASE WHEN metodo_pago='daviplata' THEN monto ELSE 0 END) AS daviplata,
+            SUM(CASE WHEN metodo_pago='breb' THEN monto ELSE 0 END) AS breb,
+            SUM(CASE WHEN metodo_pago='transferencia' THEN monto ELSE 0 END) AS transferencia,
             SUM(monto) AS total
          FROM pagos
          WHERE id_empresa=? AND fecha_pago BETWEEN ? AND COALESCE(?, NOW())`,
         [id_empresa, fecha_desde, fecha_hasta || null]
     );
     const r = rows[0] || {};
+    const digital = Number(r.digital || 0);
     return {
         efectivo: Number(r.efectivo || 0),
         tarjeta: Number(r.tarjeta || 0),
-        qr: Number(r.qr || 0),
-        total: Number(r.total || 0)
+        qr: digital,        // compatibilidad: la columna turnos.total_qr guarda el digital
+        digital: digital,
+        total: Number(r.total || 0),
+        detalle: {
+            qr: Number(r.solo_qr || 0),
+            nequi: Number(r.nequi || 0),
+            daviplata: Number(r.daviplata || 0),
+            breb: Number(r.breb || 0),
+            transferencia: Number(r.transferencia || 0)
+        }
     };
 }
 
@@ -304,7 +335,14 @@ router.post('/abrir', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
 // Cerrar turno
+//
+// El conteo llega en tres bolsas: efectivo, tarjeta y digital. El campo del
+// cuerpo se sigue llamando total_qr porque asi se llama la columna en la tabla,
+// pero ahora representa TODO lo digital (QR, Nequi, Daviplata, Bre-B,
+// transferencia). Tambien se acepta total_digital como alias.
+// ---------------------------------------------------------------------------
 router.post('/cerrar', async (req, res) => {
     try {
         const { id_empresa } = req.user;
@@ -317,7 +355,9 @@ router.post('/cerrar', async (req, res) => {
 
         const efectivo = parsearPesos(req.body.total_efectivo);
         const tarjeta = parsearPesos(req.body.total_tarjeta);
-        const qr = parsearPesos(req.body.total_qr);
+        const qr = parsearPesos(
+            req.body.total_digital !== undefined ? req.body.total_digital : req.body.total_qr
+        );
 
         if (efectivo === null || tarjeta === null || qr === null) {
             return res.status(400).json({
@@ -330,7 +370,7 @@ router.post('/cerrar', async (req, res) => {
         const id_turno = t.id_turno;
 
         const expected = await getTotalesSistema(id_empresa, t.fecha_apertura, t.fecha_cierre);
-        const userTotals = { efectivo, tarjeta, qr, total: totalConteo };
+        const userTotals = { efectivo, tarjeta, qr, digital: qr, total: totalConteo };
         const diff = Number((totalConteo - expected.total).toFixed(2));
 
         await pool.query(
@@ -390,19 +430,6 @@ router.get('/detalle/:id', sanitizeIdParam('id'), async (req, res) => {
         res.json({ success: true, data: { turno: t, expected, stats } });
     } catch (err) {
         responderError(res, 'GET /detalle', err, 'Error obteniendo el detalle del turno');
-    }
-});
-// TEMPORAL - borrar despues de correrlo UNA vez.
-router.get('/_alter', async (req, res) => {
-    try {
-        await pool.query(
-            "ALTER TABLE pagos MODIFY metodo_pago " +
-            "ENUM('efectivo','tarjeta','QR','nequi','daviplata','breb','transferencia') NOT NULL"
-        );
-        const [pagos] = await pool.query("SHOW COLUMNS FROM pagos LIKE 'metodo_pago'");
-        res.json({ success: true, pagos });
-    } catch (err) {
-        responderError(res, 'GET /_alter', err, 'Error en el ALTER');
     }
 });
 
