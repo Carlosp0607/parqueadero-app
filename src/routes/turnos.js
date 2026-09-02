@@ -392,14 +392,17 @@ router.get('/detalle/:id', sanitizeIdParam('id'), async (req, res) => {
         responderError(res, 'GET /detalle', err, 'Error obteniendo el detalle del turno');
     }
 });
-// TEMPORAL - borrar despues de leer el ENUM de metodo_pago.
-router.get('/_enum', async (req, res) => {
+// TEMPORAL - borrar despues de correrlo UNA vez.
+router.get('/_alter', async (req, res) => {
     try {
+        await pool.query(
+            "ALTER TABLE pagos MODIFY metodo_pago " +
+            "ENUM('efectivo','tarjeta','QR','nequi','daviplata','breb','transferencia') NOT NULL"
+        );
         const [pagos] = await pool.query("SHOW COLUMNS FROM pagos LIKE 'metodo_pago'");
-        const [turnos] = await pool.query("SHOW COLUMNS FROM turnos");
-        res.json({ success: true, pagos, turnos: turnos.map(c => c.Field + ' ' + c.Type) });
+        res.json({ success: true, pagos });
     } catch (err) {
-        responderError(res, 'GET /_enum', err, 'Error leyendo la estructura');
+        responderError(res, 'GET /_alter', err, 'Error en el ALTER');
     }
 });
 
