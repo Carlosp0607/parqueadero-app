@@ -5,6 +5,45 @@
 const pool = require('../config/db');
 const { calcularTotal } = require('../utils/tarifa');
 
+// ---------------------------------------------------------------------------
+// Traduccion de errores de MySQL a algo que el operador pueda entender.
+//
+// Antes cada catch respondia con un texto fijo y descartaba el error real. Por
+// eso "Error al confirmar la salida" no decia nada: el operador no sabia si era
+// la placa, el metodo de pago o la base de datos, y volvia a intentar.
+// ---------------------------------------------------------------------------
+const CAUSAS_SQL = {
+    WARN_DATA_TRUNCATED: 'El método de pago no está permitido en la base de datos.',
+    ER_DATA_TOO_LONG: 'El método de pago no está permitido en la base de datos.',
+    ER_TRUNCATED_WRONG_VALUE_FOR_FIELD: 'El método de pago no está permitido en la base de datos.',
+    ER_NO_REFERENCED_ROW_2: 'El movimiento, el vehículo o el usuario no existen.',
+    ER_BAD_FIELD_ERROR: 'La estructura de la tabla no coincide con la esperada.',
+    ER_NO_SUCH_TABLE: 'La base de datos no tiene las tablas creadas.',
+    ER_DUP_ENTRY: 'Ya existe un registro con esos datos.',
+    ECONNREFUSED: 'No hay conexión con la base de datos.',
+    PROTOCOL_CONNECTION_LOST: 'Se perdió la conexión con la base de datos.',
+    ETIMEDOUT: 'La base de datos no respondió a tiempo.'
+};
+
+function responderError(res, contexto, error, mensajeUsuario) {
+    console.error(`[movimientos] ${contexto} FALLÓ:`, {
+        code: error.code,
+        errno: error.errno,
+        sqlState: error.sqlState,
+        sqlMessage: error.sqlMessage,
+        message: error.message
+    });
+
+    const detalle = CAUSAS_SQL[error.code];
+    return res.status(500).json({
+        success: false,
+        message: detalle
+            ? `${mensajeUsuario}: ${detalle}`
+            : `${mensajeUsuario}: ${error.sqlMessage || error.message}`,
+        codigo: error.code || null
+    });
+}
+
 async function obtenerTarifaVigente(conn, id_empresa, id_tipo) {
     const [rows] = await conn.query(
         `SELECT * FROM tarifas
@@ -51,6 +90,23 @@ async function armarFactura(conn, id_empresa, id_movimiento) {
         total: Number(m.total_a_pagar || 0),
         pagosList: pagos.map(p => ({ metodo_pago: p.metodo_pago, monto: Number(p.monto) }))
     };
+}
+
+// ---------------------------------------------------------------------------
+// Metodos de pago aceptados. Deben coincidir EXACTAMENTE con el ENUM de la
+// columna pagos.metodo_pago. Si no coincide, MySQL rechaza el INSERT y la
+// salida falla despues de haber cobrado.
+// ---------------------------------------------------------------------------
+const METODOS_VALIDOS = ['efectivo', 'tarjeta', 'QR', 'nequi', 'daviplata', 'breb', 'transferencia'];
+
+// Normaliza lo que llegue del frontend. 'QR' va en mayuscula en el ENUM, el
+// resto en minuscula. Devuelve null si el metodo no existe.
+function normalizarMetodo(valor) {
+    const v = String(valor || '').trim().toLowerCase();
+    if (!v) return null;
+    if (v === 'qr') return 'QR';
+    const encontrado = METODOS_VALIDOS.find(m => m.toLowerCase() === v);
+    return encontrado || null;
 }
 
 // POST /api/movimientos/ingreso  (alias: /entrada)
@@ -147,8 +203,7 @@ exports.registrarEntrada = async (req, res) => {
         });
     } catch (error) {
         await conn.rollback();
-        console.error('Error al registrar ingreso:', error);
-        return res.status(500).json({ success: false, message: 'Error al registrar el ingreso' });
+        return responderError(res, 'POST /ingreso', error, 'Error al registrar el ingreso');
     } finally {
         conn.release();
     }
@@ -208,8 +263,7 @@ exports.calcularSalida = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error al calcular salida:', error);
-        return res.status(500).json({ success: false, message: 'Error al calcular la salida' });
+        return responderError(res, 'POST /calcular-salida', error, 'Error al calcular la salida');
     }
 };
 
@@ -220,6 +274,19 @@ exports.confirmarSalida = async (req, res) => {
     const pagos = Array.isArray(req.body.pagos) ? req.body.pagos : [];
 
     if (!id_movimiento) return res.status(400).json({ success: false, message: 'id_movimiento es obligatorio' });
+
+    // El metodo se valida ANTES de tocar la base. Si llega uno que el ENUM no
+    // acepta, MySQL rechaza el INSERT y la salida falla despues de que el
+    // cliente ya pago. Mejor rechazarlo aqui con un mensaje claro.
+    for (const p of pagos) {
+        if (!p || !p.metodo_pago) continue;
+        if (!normalizarMetodo(p.metodo_pago)) {
+            return res.status(400).json({
+                success: false,
+                message: `El método de pago "${p.metodo_pago}" no existe. Válidos: ${METODOS_VALIDOS.join(', ')}.`
+            });
+        }
+    }
 
     const conn = await pool.getConnection();
     try {
@@ -241,12 +308,16 @@ exports.confirmarSalida = async (req, res) => {
         }
 
         const [tarifas] = await conn.query('SELECT * FROM tarifas WHERE id_tarifa = ?', [rows[0].id_tarifa]);
+        if (tarifas.length === 0) {
+            await conn.rollback();
+            return res.status(400).json({ success: false, message: 'La tarifa del movimiento ya no existe' });
+        }
         const ahora = new Date();
         const { total } = calcularTotal(tarifas[0], rows[0].fecha_entrada, ahora);
 
         const validos = pagos
             .filter(p => p && p.metodo_pago && Number(p.monto) > 0)
-            .map(p => [id_empresa, id_movimiento, p.metodo_pago, Number(p.monto), id_usuario]);
+            .map(p => [id_empresa, id_movimiento, normalizarMetodo(p.metodo_pago), Number(p.monto), id_usuario]);
 
         const pagado = validos.reduce((a, p) => a + p[3], 0);
         if (pagado + 0.01 < total) {
@@ -274,8 +345,7 @@ exports.confirmarSalida = async (req, res) => {
         return res.json({ success: true, message: 'Salida confirmada', data: factura });
     } catch (error) {
         await conn.rollback();
-        console.error('Error al confirmar salida:', error);
-        return res.status(500).json({ success: false, message: 'Error al confirmar la salida' });
+        return responderError(res, 'POST /confirmar-salida', error, 'Error al confirmar la salida');
     } finally {
         conn.release();
     }
@@ -285,8 +355,16 @@ exports.confirmarSalida = async (req, res) => {
 exports.registrarSalida = async (req, res) => {
     const { id_empresa } = req.usuario;
     const placa = String(req.body.placa || '').trim().toUpperCase();
-    const metodoPago = req.body.metodoPago || req.body.metodo_pago || 'efectivo';
+    const metodoCrudo = req.body.metodoPago || req.body.metodo_pago || 'efectivo';
     if (!placa) return res.status(400).json({ success: false, message: 'La placa es obligatoria' });
+
+    const metodoPago = normalizarMetodo(metodoCrudo);
+    if (!metodoPago) {
+        return res.status(400).json({
+            success: false,
+            message: `El método de pago "${metodoCrudo}" no existe. Válidos: ${METODOS_VALIDOS.join(', ')}.`
+        });
+    }
 
     try {
         const [rows] = await pool.query(
@@ -302,13 +380,15 @@ exports.registrarSalida = async (req, res) => {
         }
 
         const [tarifas] = await pool.query('SELECT * FROM tarifas WHERE id_tarifa = ?', [rows[0].id_tarifa]);
+        if (tarifas.length === 0) {
+            return res.status(400).json({ success: false, message: 'La tarifa del movimiento ya no existe' });
+        }
         const { total } = calcularTotal(tarifas[0], rows[0].fecha_entrada, new Date());
 
         req.body = { id_movimiento: rows[0].id_movimiento, pagos: [{ metodo_pago: metodoPago, monto: total }] };
         return exports.confirmarSalida(req, res);
     } catch (error) {
-        console.error('Error al registrar salida:', error);
-        return res.status(500).json({ success: false, message: 'Error al registrar la salida' });
+        return responderError(res, 'POST /salida', error, 'Error al registrar la salida');
     }
 };
 
@@ -333,8 +413,7 @@ exports.obtenerDetalle = async (req, res) => {
         }
         return res.json({ success: true, data: rows[0] });
     } catch (error) {
-        console.error('Error al obtener detalle:', error);
-        return res.status(500).json({ success: false, message: 'Error al obtener el detalle' });
+        return responderError(res, 'GET /detalle', error, 'Error al obtener el detalle');
     }
 };
 
@@ -346,8 +425,7 @@ exports.obtenerFactura = async (req, res) => {
         if (!factura) return res.status(404).json({ success: false, message: 'Movimiento no encontrado' });
         return res.json({ success: true, data: factura });
     } catch (error) {
-        console.error('Error al obtener factura:', error);
-        return res.status(500).json({ success: false, message: 'Error al obtener la factura' });
+        return responderError(res, 'GET /factura', error, 'Error al obtener la factura');
     }
 };
 
@@ -361,7 +439,6 @@ exports.listarActivos = async (req, res) => {
         );
         return res.json({ success: true, data: rows });
     } catch (error) {
-        console.error('Error al listar activos:', error);
-        return res.status(500).json({ success: false, message: 'Error al listar movimientos activos' });
+        return responderError(res, 'GET /activos', error, 'Error al listar movimientos activos');
     }
 };
