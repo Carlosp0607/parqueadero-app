@@ -136,6 +136,97 @@ async function getConteoTickets(id_empresa, fecha_desde, fecha_hasta) {
     return { total, porTipo: map };
 }
 
+// ---------------------------------------------------------------------------
+// Historial de turnos
+//
+// Lista los turnos de la empresa, del más reciente al más viejo. Sirve para que
+// el dueño vea, turno por turno, a qué hora se abrió, a qué hora se cerró,
+// cuánto se recaudó y si la caja cuadró.
+//
+// Los totales que devuelve son los YA GUARDADOS en la tabla al momento del
+// cierre. NO se recalculan contra pagos: si mañana alguien corrige un pago
+// viejo, el cierre histórico debe seguir diciendo lo que se contó ese día.
+//
+// Parámetros opcionales de query:
+//   estado  'cerrado' | 'abierto'   por defecto trae ambos
+//   desde   YYYY-MM-DD              filtra por fecha de apertura
+//   hasta   YYYY-MM-DD
+//   page    número de página, arranca en 1
+//   limit   filas por página, máximo 100
+// ---------------------------------------------------------------------------
+router.get('/', async (req, res) => {
+    try {
+        const { id_empresa } = req.user;
+
+        const condiciones = ['t.id_empresa=?'];
+        const valores = [id_empresa];
+
+        const estado = String(req.query.estado || '').trim().toLowerCase();
+        if (estado === 'cerrado' || estado === 'abierto') {
+            condiciones.push('t.estado=?');
+            valores.push(estado);
+        }
+
+        // Solo se aceptan fechas con formato exacto YYYY-MM-DD. Cualquier otra
+        // cosa se ignora en vez de llegar a MySQL.
+        const esFecha = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+
+        if (esFecha(req.query.desde)) {
+            condiciones.push('t.fecha_apertura >= ?');
+            valores.push(req.query.desde + ' 00:00:00');
+        }
+        if (esFecha(req.query.hasta)) {
+            condiciones.push('t.fecha_apertura <= ?');
+            valores.push(req.query.hasta + ' 23:59:59');
+        }
+
+        const where = condiciones.join(' AND ');
+
+        // page y limit se convierten a entero y se interpolan directo porque
+        // MySQL no acepta placeholders en LIMIT/OFFSET con este driver. Van
+        // saneados con parseInt y acotados, nunca llega texto del cliente.
+        let page = parseInt(req.query.page, 10);
+        let limit = parseInt(req.query.limit, 10);
+        if (!Number.isFinite(page) || page < 1) page = 1;
+        if (!Number.isFinite(limit) || limit < 1) limit = 20;
+        if (limit > 100) limit = 100;
+        const offset = (page - 1) * limit;
+
+        const [conteo] = await pool.query(
+            `SELECT COUNT(*) AS total FROM turnos t WHERE ${where}`,
+            valores
+        );
+        const total = Number(conteo[0] && conteo[0].total || 0);
+
+        const [rows] = await pool.query(
+            `SELECT t.id_turno, t.fecha_apertura, t.fecha_cierre, t.base_inicial,
+                    t.total_efectivo, t.total_tarjeta, t.total_qr,
+                    t.total_general, t.diferencia, t.estado,
+                    t.observacion_apertura, t.observacion_cierre,
+                    u.nombre AS usuario
+             FROM turnos t
+             LEFT JOIN usuarios u ON u.id_usuario = t.id_usuario
+             WHERE ${where}
+             ORDER BY t.fecha_apertura DESC
+             LIMIT ${limit} OFFSET ${offset}`,
+            valores
+        );
+
+        res.json({
+            success: true,
+            data: rows,
+            paginacion: {
+                page,
+                limit,
+                total,
+                paginas: Math.max(1, Math.ceil(total / limit))
+            }
+        });
+    } catch (err) {
+        responderError(res, 'GET /', err, 'Error obteniendo el historial de turnos');
+    }
+});
+
 // Turno activo de la empresa
 router.get('/actual', async (req, res) => {
     try {
