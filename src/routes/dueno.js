@@ -236,5 +236,160 @@ router.post('/empresas/:id/renovar', exigirClave, async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al renovar' });
     }
 });
+// ---------------------------------------------------------------------------
+// Alta de un parqueadero nuevo
+//
+// Antes esto eran cinco INSERT a mano en la base: empresa, configuracion,
+// usuario admin, tipos de vehiculo y tarifas. Media hora de SQL por cliente, y
+// si uno se equivocaba a la mitad el parqueadero quedaba armado por pedazos:
+// una empresa sin configuracion, o con tipos pero sin precios, y el operador
+// no podia ni registrar una entrada.
+//
+// Todo va en UNA transaccion. O se crea completo y usable desde el primer
+// minuto, o no se crea nada.
+//
+// Los tipos y tarifas de arranque son los tipicos de un parqueadero
+// colombiano. El cliente los cambia despues en su propia pantalla de Tarifas.
+// ---------------------------------------------------------------------------
+const bcrypt = require('bcryptjs');
+
+const TIPOS_INICIALES = [
+    // nombre, codigo, cupos, minuto, hora, dia
+    ['Carro',     'carro',     40, 120, 6000, 30000],
+    ['Moto',      'moto',      30,  60, 3000, 15000],
+    ['Bicicleta', 'bicicleta', 20,  30, 1500,  7500]
+];
+
+router.post('/empresas', exigirClave, async (req, res) => {
+    const nombre   = String(req.body.nombre || '').trim();
+    const nit      = String(req.body.nit || '').trim();
+    const direccion= String(req.body.direccion || '').trim() || null;
+    const telefono = String(req.body.telefono || '').trim() || null;
+    const email    = String(req.body.email || '').trim() || null;
+    const usuario  = String(req.body.usuario || '').trim();
+    const password = String(req.body.password || '');
+    const meses    = parseInt(req.body.meses, 10) || 1;
+
+    if (!nombre || !nit) {
+        return res.status(400).json({ success:false, message:'El nombre y el NIT son obligatorios.' });
+    }
+    if (!usuario || !password) {
+        return res.status(400).json({ success:false, message:'Hay que crear el usuario administrador.' });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ success:false, message:'La contraseña debe tener al menos 6 caracteres.' });
+    }
+    if (meses < 1 || meses > 24) {
+        return res.status(400).json({ success:false, message:'Los meses deben ir de 1 a 24.' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+        await asegurarColumnaVencimiento();
+
+        // El tope no es un capricho: mas alla de 15 el tier gratuito de Aiven
+        // y Render no aguanta, y el sistema se cae para TODOS los clientes.
+        const [cuenta] = await conn.query(
+            'SELECT COUNT(*) AS n FROM empresas WHERE activa = TRUE'
+        );
+        if (Number(cuenta[0].n) >= TOPE_EMPRESAS) {
+            conn.release();
+            return res.status(409).json({
+                success: false,
+                message: 'Ya hay ' + TOPE_EMPRESAS + ' parqueaderos activos, que es el tope ' +
+                         'de este plan. Apaga uno o sube de plan antes de vender otro.'
+            });
+        }
+
+        const [repetido] = await conn.query(
+            'SELECT id_empresa FROM empresas WHERE nit = ?', [nit]
+        );
+        if (repetido.length) {
+            conn.release();
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe un parqueadero con el NIT ' + nit + '.'
+            });
+        }
+
+        await conn.beginTransaction();
+
+        // 1. La empresa
+        const [emp] = await conn.query(
+            `INSERT INTO empresas (nombre, nit, direccion, telefono, email, plan, activa, fecha_vencimiento)
+             VALUES (?, ?, ?, ?, ?, 'basico', TRUE, DATE_ADD(CURDATE(), INTERVAL ? MONTH))`,
+            [nombre, nit, direccion, telefono, email, meses]
+        );
+        const id_empresa = emp.insertId;
+
+        // 2. Configuracion. Sin esta fila la pantalla de Configuracion responde
+        //    404 y el cliente no puede ni poner su horario.
+        await conn.query(
+            `INSERT INTO configuracion_empresa
+                (id_empresa, horario_apertura, horario_cierre, iva_porcentaje,
+                 moneda, zona_horaria, operacion_24h)
+             VALUES (?, '06:00:00', '22:00:00', 0, 'COP', 'America/Bogota', FALSE)`,
+            [id_empresa]
+        );
+
+        // 3. Usuario administrador
+        const hash = await bcrypt.hash(password, 10);
+        await conn.query(
+            'INSERT INTO usuarios (id_empresa, nombre, usuario_login, `contraseña`, rol, activo) VALUES (?, ?, ?, ?, ?, TRUE)',
+            [id_empresa, 'Administrador', usuario, hash, 'admin']
+        );
+
+        // 4. Tipos de vehiculo y su tarifa. Van juntos a proposito: un tipo sin
+        //    tarifa no se puede cobrar, el ingreso falla con "No hay tarifa
+        //    vigente" y el parqueadero queda inservible el primer dia.
+        for (const [nom, cod, cupos, vMin, vHora, vDia] of TIPOS_INICIALES) {
+            const [tipo] = await conn.query(
+                'INSERT INTO tipos_vehiculos (id_empresa, nombre, codigo, capacidad, activo) VALUES (?, ?, ?, ?, TRUE)',
+                [id_empresa, nom, cod, cupos]
+            );
+
+            await conn.query(
+                `INSERT INTO tarifas
+                    (id_empresa, id_tipo, valor_hora, valor_minuto, valor_dia_completo,
+                     modo_cobro, paso_minutos_a_horas, paso_horas_a_dias,
+                     redondeo_horas, redondeo_dias, activa)
+                 VALUES (?, ?, ?, ?, ?, 'mixto', 60, 5, 'arriba', 'arriba', TRUE)`,
+                [id_empresa, tipo.insertId, vHora, vMin, vDia]
+            );
+        }
+
+        await conn.commit();
+
+        const [creada] = await conn.query(
+            'SELECT id_empresa, nombre, nit, fecha_vencimiento FROM empresas WHERE id_empresa = ?',
+            [id_empresa]
+        );
+
+        console.log(`[dueno] Parqueadero creado: ${nombre} (NIT ${nit}, id ${id_empresa})`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Parqueadero creado. Ya puede entrar con su NIT y usuario.',
+            data: creada[0]
+        });
+    } catch (error) {
+        await conn.rollback();
+        console.error('[dueno] Error creando parqueadero:', {
+            code: error.code, sqlMessage: error.sqlMessage, message: error.message
+        });
+
+        const causas = {
+            ER_DUP_ENTRY: 'Ya existe un parqueadero o un usuario con esos datos.',
+            ER_NO_SUCH_TABLE: 'Falta una tabla en la base de datos.',
+            ER_BAD_FIELD_ERROR: 'La estructura de las tablas no coincide con la esperada.'
+        };
+        res.status(500).json({
+            success: false,
+            message: causas[error.code] || ('No se pudo crear el parqueadero: ' + (error.sqlMessage || error.message))
+        });
+    } finally {
+        conn.release();
+    }
+});
 
 module.exports = router;
