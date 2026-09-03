@@ -392,12 +392,25 @@ exports.registrarSalida = async (req, res) => {
     }
 };
 
+// ---------------------------------------------------------------------------
 // GET /api/movimientos/detalle/:id
+//
+// Si el movimiento sigue ACTIVO, el total se calcula al vuelo con la tarifa
+// vigente. Antes se devolvia total_a_pagar tal cual, que esta vacio hasta que
+// el vehiculo sale: el operador pulsaba "Cobrar y dar salida" sin saber cuanto
+// iba a cobrar, y si el cliente preguntaba "cuanto es" no habia respuesta
+// hasta despues de haber cobrado.
+//
+// El valor es una PREVISUALIZACION. El cobro real se recalcula en la salida
+// con la hora exacta de ese momento, asi que puede subir unos pesos si el
+// vehiculo se queda un rato mas.
+// ---------------------------------------------------------------------------
 exports.obtenerDetalle = async (req, res) => {
     const { id_empresa } = req.usuario;
     try {
         const [rows] = await pool.query(
             `SELECT m.id_movimiento, m.fecha_entrada, m.fecha_salida, m.total_a_pagar, m.estado,
+                    m.id_tarifa,
                     v.placa, tv.nombre AS tipo, tv.codigo AS tipo_codigo,
                     ue.nombre AS usuario_entrada, us.nombre AS usuario_salida
              FROM movimientos m
@@ -411,7 +424,27 @@ exports.obtenerDetalle = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Movimiento no encontrado' });
         }
-        return res.json({ success: true, data: rows[0] });
+
+        const m = rows[0];
+        const salida = { ...m };
+
+        if (m.estado === 'activo') {
+            const [tarifas] = await pool.query(
+                'SELECT * FROM tarifas WHERE id_tarifa = ?', [m.id_tarifa]
+            );
+            if (tarifas.length) {
+                const calc = calcularTotal(tarifas[0], m.fecha_entrada, new Date());
+                salida.total = calc.total;
+                salida.total_a_pagar = calc.total;
+                salida.minutos = calc.minutos;
+                salida.detalleTiempo = calc.detalleTiempo;
+                salida.es_previsualizacion = true;
+            }
+        } else {
+            salida.total = Number(m.total_a_pagar || 0);
+        }
+
+        return res.json({ success: true, data: salida });
     } catch (error) {
         return responderError(res, 'GET /detalle', error, 'Error al obtener el detalle');
     }
