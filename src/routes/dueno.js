@@ -391,5 +391,18 @@ router.post('/empresas', exigirClave, async (req, res) => {
         conn.release();
     }
 });
+// TEMPORAL - borrar despues de leer la estructura.
+router.get('/_cols', exigirClave, async (req, res) => {
+    try {
+        const out = {};
+        for (const t of ['empresas','configuracion_empresa','usuarios','tipos_vehiculos','tarifas']) {
+            const [c] = await pool.query('SHOW COLUMNS FROM ' + t);
+            out[t] = c.map(x => x.Field + ' ' + x.Type + (x.Null === 'NO' ? ' NOT NULL' : ''));
+        }
+        res.json({ success: true, out });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.sqlMessage || e.message });
+    }
+});
 
 module.exports = router;
