@@ -56,8 +56,12 @@ app.use('/api', (req, res) => {
 // de sesión de una empresa, y el dueño del SaaS no tiene empresa. La página se
 // entrega sin proteger, pero no muestra nada hasta que la clave se valida
 // contra el servidor.
-app.get('/dueno', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'dueno.html'));
+// La URL no es adivinable a proposito. El panel no esta enlazado desde ningun
+// lado y con un nombre generico como /dueno cualquiera llegaba a la pantalla
+// de la clave solo probando la palabra. Si algun dia hay que cambiarla, se
+// cambia aqui y se renombra el archivo en public/.
+app.get('/gestion-ps-2026', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'gestion-ps-2026.html'));
 });
 
 // pageGuard va primero: sin cookie de sesión válida, el servidor redirige al login
