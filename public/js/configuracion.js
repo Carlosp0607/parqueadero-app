@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar datos
     cargarEmpresa();
     cargarConfig();
+    cargarQR();
 
     // Guardar
     document.getElementById('btnSaveEmpresa').addEventListener('click', guardarEmpresa);
@@ -50,6 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (uploadBtn) {
         uploadBtn.addEventListener('click', subirLogo);
     }
+
+    // QR de pago
+    const btnSubirQR = document.getElementById('btnSubirQR');
+    if (btnSubirQR) btnSubirQR.addEventListener('click', subirQR);
+
+    const btnQuitarQR = document.getElementById('btnQuitarQR');
+    if (btnQuitarQR) btnQuitarQR.addEventListener('click', quitarQR);
 });
 
 async function cargarEmpresa(){
@@ -96,6 +104,93 @@ async function cargarConfig(){
             chk.addEventListener('change', toggleHorasPor24h);
         }
     }catch(err){ setAlert('alertConfig', 'danger', err.message); }
+}
+
+// ---------------------------------------------------------------------------
+// QR de pago
+//
+// Es la foto del QR fijo que el parqueadero ya tiene pegado en la caseta. Se
+// sube una vez y el operador la muestra al cobrar. NO es una pasarela: el
+// sistema no cobra ni verifica nada, el operador confirma en su celular.
+// ---------------------------------------------------------------------------
+async function cargarQR(){
+    const img = document.getElementById('qr_preview');
+    const vacio = document.getElementById('qr_vacio');
+    const btnQuitar = document.getElementById('btnQuitarQR');
+    if (!img) return;
+
+    try{
+        const r = await fetch('/api/empresa/qr-pago', {
+            headers:{ 'Authorization':`Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!r.ok) throw new Error('sin qr');
+        const b = await r.blob();
+        img.src = URL.createObjectURL(b);
+        img.classList.remove('d-none');
+        if (vacio) vacio.classList.add('d-none');
+        if (btnQuitar) btnQuitar.classList.remove('d-none');
+    }catch(e){
+        // 404 es lo normal cuando todavia no han subido ninguno.
+        img.classList.add('d-none');
+        if (vacio) vacio.classList.remove('d-none');
+        if (btnQuitar) btnQuitar.classList.add('d-none');
+    }
+}
+
+async function subirQR(){
+    const input = document.getElementById('qr_file');
+    const file = input && input.files[0];
+    if (!file) { setAlert('alertQR','warning','Escoge primero la imagen del QR.'); return; }
+
+    const max = 2 * 1024 * 1024;
+    const okType = ['image/png','image/jpeg','image/jpg','image/gif'].includes(file.type);
+    if (!okType) { setAlert('alertQR','danger','Tipo de archivo no permitido. Usa PNG o JPG.'); return; }
+    if (file.size > max) { setAlert('alertQR','danger','La imagen excede 2MB.'); return; }
+
+    const btn = document.getElementById('btnSubirQR');
+    const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = spinner('Subiendo...');
+    try{
+        const form = new FormData();
+        form.append('qr', file);
+        const r = await fetch('/api/empresa/qr-pago', {
+            method:'POST',
+            headers:{ 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: form
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.message||'Error al subir el QR');
+
+        setAlert('alertQR','success','QR guardado. Ya aparece al cobrar.');
+        input.value = '';
+        const btnQuitar = document.getElementById('btnQuitarQR');
+        if (btnQuitar) btnQuitar.classList.remove('d-none');
+        const vacio = document.getElementById('qr_vacio');
+        if (vacio) vacio.classList.add('d-none');
+    }catch(err){ setAlert('alertQR','danger', err.message); }
+    finally{ btn.disabled=false; btn.innerHTML = prev; }
+}
+
+async function quitarQR(){
+    if (!confirm('¿Quitar el QR? Dejará de aparecer al cobrar.')) return;
+
+    const btn = document.getElementById('btnQuitarQR');
+    const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = spinner('Quitando...');
+    try{
+        const r = await fetch('/api/empresa/qr-pago', {
+            method:'DELETE',
+            headers:{ 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.message||'Error al quitar el QR');
+
+        const img = document.getElementById('qr_preview');
+        const vacio = document.getElementById('qr_vacio');
+        if (img) { img.src = ''; img.classList.add('d-none'); }
+        if (vacio) vacio.classList.remove('d-none');
+        btn.classList.add('d-none');
+        setAlert('alertQR','success','QR eliminado.');
+    }catch(err){ setAlert('alertQR','danger', err.message); }
+    finally{ btn.disabled=false; btn.innerHTML = prev; }
 }
 
 async function guardarEmpresa(){
@@ -153,7 +248,8 @@ function toggleHorasPor24h(){
 
 function setAlert(id, type, msg){
     const el = document.getElementById(id);
-    el.className = `alert alert-${type}`;
+    if (!el) return;
+    el.className = `alert alert-${type} py-2 small`;
     el.textContent = msg;
 }
 
@@ -161,9 +257,15 @@ function spinner(text){
     return `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${text}`;
 }
 
-// Subir logo y colocar URL pública en el campo de texto (no guarda aún en BD)
+// Sube el logo y lo guarda como BLOB en la empresa.
+//
+// FIX: aqui se usaba la variable "preview", que solo existe dentro del
+// DOMContentLoaded. Al ejecutarse lanzaba ReferenceError DESPUES de que el
+// logo ya se habia guardado, asi que el admin veia un error rojo y volvia a
+// subirlo pensando que habia fallado.
 async function subirLogo(){
-    const file = document.getElementById('e_logo_file') && document.getElementById('e_logo_file').files[0];
+    const input = document.getElementById('e_logo_file');
+    const file = input && input.files[0];
     if (!file) { setAlert('alertEmpresa','warning','Selecciona un archivo de logo.'); return; }
     const btn = document.getElementById('btnUploadLogo');
     const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = spinner('Subiendo...');
@@ -173,10 +275,10 @@ async function subirLogo(){
         const r = await fetch('/api/empresa/logo', { method:'POST', headers:{ 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: form });
         const j = await r.json();
         if (!r.ok) throw new Error(j.message||'Error al subir logo');
-        if (preview) { preview.src = j.url; preview.classList.remove('d-none'); }
+
+        const img = document.getElementById('e_logo_preview');
+        if (img) { img.src = j.url; img.classList.remove('d-none'); }
         setAlert('alertEmpresa','success','Logo subido y guardado.');
     }catch(err){ setAlert('alertEmpresa','danger', err.message); }
     finally{ btn.disabled=false; btn.innerHTML = prev; }
 }
-
-
