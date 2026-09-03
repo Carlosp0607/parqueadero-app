@@ -82,9 +82,10 @@
     <div>
       <h4 class="mb-1">Panel del dueño</h4>
       <div class="text-muted small" id="fechaHoy"></div>
-    </div>
-    <button class="btn-texto ms-auto" id="btnSalir">Salir</button>
-  </div>
+          <div class="ms-auto d-flex align-items-center gap-4">
+        <button class="btn btn-primary btn-sm" id="btnNuevo">Nuevo parqueadero</button>
+        <button class="btn-texto" id="btnSalir">Salir</button>
+      </div>
 
   <!-- CIFRAS -->
   <div class="row mb-5">
@@ -156,6 +157,87 @@
       <div class="modal-footer">
         <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button class="btn btn-primary" id="btnGuardarFecha">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+    <!-- NUEVO PARQUEADERO -->
+<div class="modal fade" id="modalNuevo" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Nuevo parqueadero</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+
+      <div class="modal-body">
+        <div class="rotulo mb-1">Nombre del parqueadero</div>
+        <input class="form-control campo-linea mb-4" id="nNombre" autocomplete="off">
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="rotulo mb-1">NIT</div>
+            <input class="form-control campo-linea" id="nNit" autocomplete="off" placeholder="900123456-7">
+          </div>
+          <div class="col-md-6">
+            <div class="rotulo mb-1">Teléfono</div>
+            <input class="form-control campo-linea" id="nTelefono" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="rotulo mb-1">Dirección <span class="text-lowercase suave">(opcional)</span></div>
+        <input class="form-control campo-linea mb-4" id="nDireccion" autocomplete="off">
+
+        <div class="rotulo mb-1">Correo <span class="text-lowercase suave">(opcional)</span></div>
+        <input type="email" class="form-control campo-linea mb-4" id="nEmail" autocomplete="off">
+
+        <div class="pt-4 mt-4 linea-fina">
+          <div class="titulo-seccion mb-1">Con qué va a entrar</div>
+          <div class="small suave mb-4">Estos son los datos que le entregas al cliente.</div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="rotulo mb-1">Usuario</div>
+              <input class="form-control campo-linea" id="nUsuario" autocomplete="off" placeholder="admin">
+            </div>
+            <div class="col-md-6">
+              <div class="rotulo mb-1">Contraseña</div>
+              <input class="form-control campo-linea" id="nPassword" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="rotulo mb-2">Meses pagados</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm flex-fill mesn" data-m="1">1</button>
+            <button class="btn btn-outline-secondary btn-sm flex-fill mesn active" data-m="3">3</button>
+            <button class="btn btn-outline-secondary btn-sm flex-fill mesn" data-m="6">6</button>
+            <button class="btn btn-outline-secondary btn-sm flex-fill mesn" data-m="12">12</button>
+          </div>
+        </div>
+
+        <div class="small suave mt-4">
+          Se crean solos: la configuración, el usuario administrador y los tipos
+          Carro, Moto y Bicicleta con sus tarifas. El cliente los ajusta después.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" id="btnCrear">Crear parqueadero</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DATOS DE ENTREGA -->
+<div class="modal fade" id="modalEntrega" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-body py-4">
+        <div class="rotulo mb-3">Listo. Entrégale esto al cliente</div>
+        <div id="cuerpoEntrega"></div>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button class="btn-texto me-4" id="btnCopiar">Copiar</button>
+        <button class="btn btn-primary btn-sm" data-bs-dismiss="modal">Listo</button>
       </div>
     </div>
   </div>
@@ -476,6 +558,85 @@ async function cambiarEstado(id){
     await cargar();
   }catch(err){ avisar('error', err.message); }
 }
+  /* ---------- nuevo parqueadero ---------- */
+let MESES_NUEVO = 3;
+
+$('btnNuevo').addEventListener('click', () => {
+  ['nNombre','nNit','nTelefono','nDireccion','nEmail','nUsuario','nPassword']
+    .forEach(id => $(id).value = '');
+  $('nUsuario').value = 'admin';
+
+  MESES_NUEVO = 3;
+  document.querySelectorAll('.mesn').forEach(b =>
+    b.classList.toggle('active', b.dataset.m === '3'));
+
+  bootstrap.Modal.getOrCreateInstance($('modalNuevo')).show();
+});
+
+document.querySelectorAll('.mesn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.mesn').forEach(o => o.classList.remove('active'));
+    b.classList.add('active');
+    MESES_NUEVO = Number(b.dataset.m);
+  });
+});
+
+$('btnCrear').addEventListener('click', async () => {
+  const datos = {
+    nombre:    $('nNombre').value.trim(),
+    nit:       $('nNit').value.trim(),
+    telefono:  $('nTelefono').value.trim(),
+    direccion: $('nDireccion').value.trim(),
+    email:     $('nEmail').value.trim(),
+    usuario:   $('nUsuario').value.trim(),
+    password:  $('nPassword').value,
+    meses:     MESES_NUEVO
+  };
+
+  if(!datos.nombre) return avisar('alerta','Ponle nombre al parqueadero.');
+  if(!datos.nit)    return avisar('alerta','Falta el NIT. Con eso entra el cliente.');
+  if(!datos.usuario || !datos.password)
+    return avisar('alerta','Hay que crearle usuario y contraseña.');
+  if(datos.password.length < 6)
+    return avisar('alerta','La contraseña necesita al menos 6 caracteres.');
+
+  const btn = $('btnCrear');
+  btn.disabled = true; btn.textContent = 'Creando…';
+  try{
+    await api('/api/dueno/empresas', { method:'POST', body: JSON.stringify(datos) });
+    bootstrap.Modal.getInstance($('modalNuevo')).hide();
+
+    // Los datos de entrada se muestran UNA vez. La contraseña queda encriptada
+    // en la base y no se puede volver a ver: si no se copia ahora, toca
+    // cambiarla desde la pantalla de Usuarios del propio cliente.
+    const texto =
+      'ParkSystem\n' +
+      window.location.origin + '\n\n' +
+      'NIT: ' + datos.nit + '\n' +
+      'Usuario: ' + datos.usuario + '\n' +
+      'Contraseña: ' + datos.password;
+
+    $('cuerpoEntrega').innerHTML =
+      '<div class="small suave mb-3">' + escapar(datos.nombre) + '</div>' +
+      '<table class="table limpia mb-3"><tbody>' +
+        '<tr><td class="suave">Entra por</td><td>' + escapar(window.location.origin) + '</td></tr>' +
+        '<tr><td class="suave">NIT</td><td>' + escapar(datos.nit) + '</td></tr>' +
+        '<tr><td class="suave">Usuario</td><td>' + escapar(datos.usuario) + '</td></tr>' +
+        '<tr><td class="suave">Contraseña</td><td>' + escapar(datos.password) + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="small text-danger">La contraseña no se puede volver a ver. Cópiala ahora.</div>';
+
+    $('btnCopiar').onclick = function(){
+      navigator.clipboard.writeText(texto)
+        .then(() => avisar('ok','Copiado.'))
+        .catch(() => avisar('alerta','No se pudo copiar. Anótalo a mano.'));
+    };
+
+    bootstrap.Modal.getOrCreateInstance($('modalEntrega')).show();
+    await cargar();
+  }catch(e){ avisar('error', e.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Crear parqueadero'; }
+});
 
 /* ---------- arranque ---------- */
 if(CLAVE) mostrarPanel();
