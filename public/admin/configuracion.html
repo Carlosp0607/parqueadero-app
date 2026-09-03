@@ -33,6 +33,7 @@
     font-size:.85rem; text-decoration:none;
   }
   .btn-texto:disabled { color:#ced4da; }
+  .btn-texto.peligro { color:#dc3545; }
 
   .linea-fina { border-top:1px solid #e9ecef; }
 
@@ -180,6 +181,38 @@
       </div>
 
     </div>
+
+    <!-- QR DE PAGO -->
+    <div class="pt-5 mt-5 linea-fina">
+      <div class="row g-4">
+        <div class="col-12 col-xl-6">
+
+          <div class="titulo-seccion">QR para que el cliente pague</div>
+          <div class="small suave mb-4">
+            Sube la foto del QR que ya tienes pegado en la caseta (Nequi, Daviplata,
+            Bancolombia, Bre-B). Al cobrar, el operador lo muestra en pantalla y el
+            cliente escanea desde ahí.
+          </div>
+
+          <img id="qr_preview" src="" alt="" class="img-fluid mb-3 d-none" style="max-height:200px">
+          <div class="small suave mb-3 d-none" id="qr_vacio">Todavía no hay QR cargado.</div>
+
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <input type="file" id="qr_file" class="form-control form-control-sm campo-linea" accept="image/*" style="max-width:18rem">
+            <button type="button" id="btnSubirQR" class="btn-texto text-nowrap">Subir QR</button>
+            <button type="button" id="btnQuitarQR" class="btn-texto peligro text-nowrap d-none">Quitar</button>
+          </div>
+
+          <div class="small suave mt-3">
+            El QR es fijo y no lleva el monto. El cliente escanea, paga, y el operador
+            confirma en su celular antes de dar la salida. El sistema no verifica el pago.
+          </div>
+
+          <div id="alertQR" class="alert d-none mt-4 py-2 small" role="alert"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -221,6 +254,22 @@
       lector.onload = function (ev) {
         prev.src = ev.target.result;
         prev.classList.remove('d-none');
+      };
+      lector.readAsDataURL(f);
+    });
+  }
+
+  // Vista previa del QR antes de subirlo.
+  var qrFile = $('qr_file'), qrPrev = $('qr_preview'), qrVacio = $('qr_vacio');
+  if (qrFile && qrPrev) {
+    qrFile.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var lector = new FileReader();
+      lector.onload = function (ev) {
+        qrPrev.src = ev.target.result;
+        qrPrev.classList.remove('d-none');
+        if (qrVacio) qrVacio.classList.add('d-none');
       };
       lector.readAsDataURL(f);
     });
