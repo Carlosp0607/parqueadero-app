@@ -40,12 +40,26 @@ app.use('/api/turnos', require('./routes/turnos'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/reportes', require('./routes/reportes'));
 
+// Panel del dueño del SaaS. No usa el login de las empresas: se protege con
+// la clave de ADMIN_MASTER_KEY. Si esa variable no está definida en el
+// entorno, el router responde 503 y el panel queda apagado.
+app.use('/api/dueno', require('./routes/dueno'));
+
 // 4. 404 de API (debe ir DESPUÉS de las rutas y ANTES de las vistas)
 app.use('/api', (req, res) => {
     res.status(404).json({ success: false, message: 'Endpoint no encontrado' });
 });
 
 // 5. Vistas HTML
+
+// El panel del dueño va FUERA de /admin a propósito: pageGuard exige la cookie
+// de sesión de una empresa, y el dueño del SaaS no tiene empresa. La página se
+// entrega sin proteger, pero no muestra nada hasta que la clave se valida
+// contra el servidor.
+app.get('/dueno', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'dueno.html'));
+});
+
 // pageGuard va primero: sin cookie de sesión válida, el servidor redirige al login
 // en vez de entregar el HTML del panel.
 app.get('/admin/:page', pageGuard, (req, res) => {
@@ -55,7 +69,6 @@ app.get('/admin/:page', pageGuard, (req, res) => {
         return res.status(404).sendFile(path.join(__dirname, '../public', '404.html'));
     }
     const filePath = path.join(__dirname, '../public', 'admin', `${page}.html`);
-
     res.sendFile(filePath, (err) => {
         if (err) {
             res.status(404).sendFile(path.join(__dirname, '../public', '404.html'), (err404) => {
