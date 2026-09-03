@@ -4,6 +4,8 @@
    Reescribe el sidebar de la pagina donde se cargue.
    Para cambiar el menu del sistema entero, se edita SOLO este archivo.
 
+   Tambien maneja el cierre de sesion y la expiracion del token.
+
    Uso: agregar antes de </body> en cada pagina del panel:
      <script src="../js/menu.js"></script>
    ============================================================ */
@@ -28,6 +30,67 @@
   };
 
   var RUTA_LOGOUT = '/api/auth/logout';
+
+  // Claves de sesion. Las preferencias del equipo (ps_ultimo_nit,
+  // savedUsername, savedEmpresa) NO se borran: se conservan para que el
+  // operador no tenga que volver a escribir el NIT cada vez.
+  var CLAVES_SESION = [
+    'token', 'ps_token', 'usuario', 'user', 'userRole', 'userName',
+    'empresaId', 'empresaNit', 'gfLoginDay', 'gfDismissedDay'
+  ];
+
+  function limpiarSesion() {
+    CLAVES_SESION.forEach(function (k) {
+      try { localStorage.removeItem(k); } catch (e) {}
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Sesion vencida
+  //
+  // Si el token muere mientras el operador esta trabajando, cualquier llamada
+  // a la API responde 401. Antes cada pagina mandaba al login SIN limpiar el
+  // localStorage, y el login veia el token guardado y devolvia al panel: la
+  // pantalla se recargaba sola para siempre y el operador quedaba trabado.
+  //
+  // Aqui se limpia primero y se redirige despues, una sola vez. El login ya
+  // no encuentra token, asi que muestra el formulario y el ciclo se corta.
+  // ---------------------------------------------------------------------
+  var yaRedirigiendo = false;
+
+  function sesionVencida() {
+    if (yaRedirigiendo) return;
+    yaRedirigiendo = true;
+    limpiarSesion();
+    window.location.replace('/?expirada=1');
+  }
+
+  // Envuelve fetch para detectar el 401 en TODA la aplicacion sin tener que
+  // tocar cada pagina. Solo actua sobre llamadas a /api/: si el propio login
+  // responde 401 (usuario o clave mala) no se toca, porque ahi el mensaje de
+  // error lo maneja el formulario.
+  function interceptarFetch() {
+    if (window.__fetchInterceptado) return;
+    window.__fetchInterceptado = true;
+
+    var fetchOriginal = window.fetch;
+    window.fetch = function () {
+      var args = arguments;
+      var url = '';
+      try {
+        url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+      } catch (e) {}
+
+      return fetchOriginal.apply(this, args).then(function (res) {
+        var esApi = url.indexOf('/api/') !== -1;
+        var esLogin = url.indexOf('/api/auth/login') !== -1;
+        if (esApi && !esLogin && (res.status === 401 || res.status === 403)) {
+          sesionVencida();
+        }
+        return res;
+      });
+    };
+  }
 
   function paginaActual() {
     return (window.location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
@@ -63,6 +126,10 @@
   }
 
   function salir() {
+    // Se marca antes de llamar al servidor: el logout devuelve la cookie
+    // borrada y no queremos que el interceptor lo lea como sesion vencida.
+    yaRedirigiendo = true;
+
     var headers = { 'Content-Type': 'application/json' };
     var tok = localStorage.getItem('token') || localStorage.getItem('ps_token');
     if (tok) headers['Authorization'] = 'Bearer ' + tok;
@@ -75,14 +142,14 @@
     })
     .catch(function () { /* la cookie igual se descarta al salir */ })
     .then(function () {
-      ['token', 'ps_token', 'usuario', 'user', 'userRole'].forEach(function (k) {
-        try { localStorage.removeItem(k); } catch (e) {}
-      });
+      limpiarSesion();
       window.location.href = '/';
     });
   }
 
   function montar() {
+    interceptarFetch();
+
     // Si la pagina fue retirada del menu, se manda a su reemplazo.
     var destino = REDIRECCIONES[paginaActual()];
     if (destino) { window.location.replace(destino); return; }
@@ -118,6 +185,10 @@
         var u = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || 'null');
         var n = u && (u.nombre || u.usuario || u.username || u.nombre_usuario);
         if (n) span.textContent = n;
+        else {
+          var simple = localStorage.getItem('userName');
+          if (simple) span.textContent = simple;
+        }
       } catch (e) {}
     }
 
@@ -136,6 +207,15 @@
       }
     } catch (e) {}
   }
+
+  // El interceptor se instala de una, sin esperar al DOM: si una pagina hace
+  // su primera llamada a la API antes de que el menu se monte, igual queda
+  // protegida.
+  interceptarFetch();
+
+  // Disponible por si alguna pagina necesita cerrar sesion por su cuenta.
+  window.psLimpiarSesion = limpiarSesion;
+  window.psSesionVencida = sesionVencida;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', montar);
