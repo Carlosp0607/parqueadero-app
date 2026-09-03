@@ -572,9 +572,12 @@ $('btnGuardarTarifa').addEventListener('click', async () => {
 
   btn.disabled = true; btn.textContent = 'Guardando…';
   try{
-    await api(CFG.tarifaGuardar, { method:'PUT', body: JSON.stringify({
-      id_tipo_vehiculo: S.sel,
-      tipo_vehiculo: S.sel,
+      await api(CFG.tarifaGuardar, { method:'PUT', body: JSON.stringify({
+      /* El backend lee req.body.id_tipo. Antes se mandaba id_tipo_vehiculo y
+         llegaba undefined, asi que respondia "Debe seleccionar un tipo de
+         vehiculo" aunque el tipo estuviera bien seleccionado en pantalla. */
+      id_tipo: Number(S.sel),
+      id_tipo_vehiculo: Number(S.sel),
       modo_cobro: MODO,
       valor_minuto: min,
       valor_hora: hor,
