@@ -19,6 +19,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 // Tope de la fase actual: mas alla de esto el tier gratuito de Aiven y Render
 // no aguanta. Sirve para no vender el cliente 16 sin darse cuenta.
@@ -58,7 +59,7 @@ function exigirClave(req, res, next) {
 // Crea fecha_vencimiento si no existe todavia.
 async function asegurarColumnaVencimiento() {
     try {
-        await pool.query('ALTER TABLE empresas ADD COLUMN fecha_vencimiento DATE NULL');
+        await pool.query('ALTER TABLE empresas ADD COLUMN fecha_vencimiento DATETIME NULL');
     } catch (e) {
         if (e.code !== 'ER_DUP_FIELDNAME') throw e;
     }
@@ -147,7 +148,7 @@ router.put('/empresas/:id', exigirClave, async (req, res) => {
             campos.push('fecha_vencimiento = NULL');
         } else if (/^\d{4}-\d{2}-\d{2}$/.test(String(f))) {
             campos.push('fecha_vencimiento = ?');
-            valores.push(f);
+            valores.push(f + ' 23:59:59');
         } else {
             return res.status(400).json({
                 success: false,
@@ -212,7 +213,7 @@ router.post('/empresas/:id/renovar', exigirClave, async (req, res) => {
         await pool.query(
             `UPDATE empresas
              SET fecha_vencimiento = DATE_ADD(
-                   GREATEST(COALESCE(fecha_vencimiento, CURDATE()), CURDATE()),
+                   GREATEST(COALESCE(fecha_vencimiento, NOW()), NOW()),
                    INTERVAL ? MONTH)
              WHERE id_empresa = ?`,
             [meses, id]
@@ -236,6 +237,7 @@ router.post('/empresas/:id/renovar', exigirClave, async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al renovar' });
     }
 });
+
 // ---------------------------------------------------------------------------
 // Alta de un parqueadero nuevo
 //
@@ -248,16 +250,17 @@ router.post('/empresas/:id/renovar', exigirClave, async (req, res) => {
 // Todo va en UNA transaccion. O se crea completo y usable desde el primer
 // minuto, o no se crea nada.
 //
-// Los tipos y tarifas de arranque son los tipicos de un parqueadero
-// colombiano. El cliente los cambia despues en su propia pantalla de Tarifas.
+// OJO con la estructura real de las tablas:
+//   - tipos_vehiculos NO tiene columna capacidad. Los cupos viven en
+//     configuracion_empresa, en tres columnas fijas que ademas son NOT NULL.
+//   - tarifas.fecha_vigencia_desde es NOT NULL. Sin ella la tarifa no cuenta
+//     como vigente y el primer ingreso falla con "No hay tarifa vigente".
 // ---------------------------------------------------------------------------
-const bcrypt = require('bcryptjs');
-
 const TIPOS_INICIALES = [
-    // nombre, codigo, cupos, minuto, hora, dia
-    ['Carro',     'carro',     40, 120, 6000, 30000],
-    ['Moto',      'moto',      30,  60, 3000, 15000],
-    ['Bicicleta', 'bicicleta', 20,  30, 1500,  7500]
+    // nombre, codigo, minuto, hora, dia
+    ['Carro',     'carro',     120, 6000, 30000],
+    ['Moto',      'moto',       60, 3000, 15000],
+    ['Bicicleta', 'bicicleta',  30, 1500,  7500]
 ];
 
 router.post('/empresas', exigirClave, async (req, res) => {
@@ -285,8 +288,6 @@ router.post('/empresas', exigirClave, async (req, res) => {
 
     const conn = await pool.getConnection();
     try {
-        await asegurarColumnaVencimiento();
-
         // El tope no es un capricho: mas alla de 15 el tier gratuito de Aiven
         // y Render no aguanta, y el sistema se cae para TODOS los clientes.
         const [cuenta] = await conn.query(
@@ -314,21 +315,23 @@ router.post('/empresas', exigirClave, async (req, res) => {
 
         await conn.beginTransaction();
 
-        // 1. La empresa
+        // 1. La empresa. El plan arranca en 'basico', primer valor del ENUM.
         const [emp] = await conn.query(
             `INSERT INTO empresas (nombre, nit, direccion, telefono, email, plan, activa, fecha_vencimiento)
-             VALUES (?, ?, ?, ?, ?, 'basico', TRUE, DATE_ADD(CURDATE(), INTERVAL ? MONTH))`,
+             VALUES (?, ?, ?, ?, ?, 'basico', TRUE, DATE_ADD(NOW(), INTERVAL ? MONTH))`,
             [nombre, nit, direccion, telefono, email, meses]
         );
         const id_empresa = emp.insertId;
 
         // 2. Configuracion. Sin esta fila la pantalla de Configuracion responde
-        //    404 y el cliente no puede ni poner su horario.
+        //    404 y el cliente no puede ni poner su horario. Las tres capacidades
+        //    son NOT NULL, asi que van con valores de arranque.
         await conn.query(
             `INSERT INTO configuracion_empresa
-                (id_empresa, horario_apertura, horario_cierre, iva_porcentaje,
-                 moneda, zona_horaria, operacion_24h)
-             VALUES (?, '06:00:00', '22:00:00', 0, 'COP', 'America/Bogota', FALSE)`,
+                (id_empresa, capacidad_total_carros, capacidad_total_motos,
+                 capacidad_total_bicicletas, horario_apertura, horario_cierre,
+                 iva_porcentaje, moneda, zona_horaria, operacion_24h)
+             VALUES (?, 40, 30, 20, '06:00:00', '22:00:00', 0, 'COP', 'America/Bogota', FALSE)`,
             [id_empresa]
         );
 
@@ -340,20 +343,20 @@ router.post('/empresas', exigirClave, async (req, res) => {
         );
 
         // 4. Tipos de vehiculo y su tarifa. Van juntos a proposito: un tipo sin
-        //    tarifa no se puede cobrar, el ingreso falla con "No hay tarifa
-        //    vigente" y el parqueadero queda inservible el primer dia.
-        for (const [nom, cod, cupos, vMin, vHora, vDia] of TIPOS_INICIALES) {
+        //    tarifa no se puede cobrar, el ingreso falla y el parqueadero queda
+        //    inservible el primer dia.
+        for (const [nom, cod, vMin, vHora, vDia] of TIPOS_INICIALES) {
             const [tipo] = await conn.query(
-                'INSERT INTO tipos_vehiculos (id_empresa, nombre, codigo, capacidad, activo) VALUES (?, ?, ?, ?, TRUE)',
-                [id_empresa, nom, cod, cupos]
+                'INSERT INTO tipos_vehiculos (id_empresa, nombre, codigo, activo) VALUES (?, ?, ?, TRUE)',
+                [id_empresa, nom, cod]
             );
 
             await conn.query(
                 `INSERT INTO tarifas
                     (id_empresa, id_tipo, valor_hora, valor_minuto, valor_dia_completo,
-                     modo_cobro, paso_minutos_a_horas, paso_horas_a_dias,
-                     redondeo_horas, redondeo_dias, activa)
-                 VALUES (?, ?, ?, ?, ?, 'mixto', 60, 5, 'arriba', 'arriba', TRUE)`,
+                     fecha_vigencia_desde, modo_cobro, paso_minutos_a_horas,
+                     paso_horas_a_dias, redondeo_horas, redondeo_dias, activa)
+                 VALUES (?, ?, ?, ?, ?, NOW(), 'mixto', 60, 5, 'arriba', 'arriba', TRUE)`,
                 [id_empresa, tipo.insertId, vHora, vMin, vDia]
             );
         }
@@ -380,8 +383,7 @@ router.post('/empresas', exigirClave, async (req, res) => {
 
         const causas = {
             ER_DUP_ENTRY: 'Ya existe un parqueadero o un usuario con esos datos.',
-            ER_NO_SUCH_TABLE: 'Falta una tabla en la base de datos.',
-            ER_BAD_FIELD_ERROR: 'La estructura de las tablas no coincide con la esperada.'
+            ER_NO_SUCH_TABLE: 'Falta una tabla en la base de datos.'
         };
         res.status(500).json({
             success: false,
@@ -389,19 +391,6 @@ router.post('/empresas', exigirClave, async (req, res) => {
         });
     } finally {
         conn.release();
-    }
-});
-// TEMPORAL - borrar despues de leer la estructura.
-router.get('/_cols', exigirClave, async (req, res) => {
-    try {
-        const out = {};
-        for (const t of ['empresas','configuracion_empresa','usuarios','tipos_vehiculos','tarifas']) {
-            const [c] = await pool.query('SHOW COLUMNS FROM ' + t);
-            out[t] = c.map(x => x.Field + ' ' + x.Type + (x.Null === 'NO' ? ' NOT NULL' : ''));
-        }
-        res.json({ success: true, out });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.sqlMessage || e.message });
     }
 });
 
