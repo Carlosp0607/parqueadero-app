@@ -17,6 +17,7 @@
   .vacio { padding:2.5rem 1rem; text-align:center; color:#adb5bd; }
 
   .separador { border-left:1px solid #e9ecef; }
+  .linea-fina { border-top:1px solid #e9ecef; }
 
   /* lista de tipos */
   .item-tipo {
@@ -46,10 +47,22 @@
     border:0; border-bottom:1px solid #e9ecef; border-radius:0; box-shadow:none;
   }
   .linea:focus { border-bottom-color:#0d6efd; }
-  .campo-precio input { font-size:1.5rem; font-weight:600; padding-left:0; }
-  .eco { min-height:1.1rem; font-size:.8rem; color:#adb5bd; }
 
-  .resumen { border-top:1px solid #e9ecef; border-bottom:1px solid #e9ecef; padding:1.25rem 0; }
+  /* cada tramo: precio + hasta cuando aplica, en la misma fila */
+  .tramo { padding:1.1rem 0; border-bottom:1px solid #f5f6f8; }
+  .tramo:last-child { border-bottom:0; }
+  .tramo-precio input {
+    font-size:1.5rem; font-weight:600; padding-left:0; width:7rem;
+  }
+  .tramo-hasta input { width:4rem; text-align:center; }
+  .tramo-desc { font-size:.8rem; color:#adb5bd; }
+
+  /* tabla de ejemplos */
+  table.ejemplos { --bs-table-bg:transparent; width:100%; }
+  table.ejemplos td { padding:.5rem 0; border-bottom:1px solid #f5f6f8; font-size:.9rem; }
+  table.ejemplos tr:last-child td { border-bottom:0; }
+  table.ejemplos td:last-child { text-align:right; font-weight:600; }
+  table.ejemplos .tope td { color:#8a94a0; }
 
   .btn-texto { background:none; border:0; padding:0; color:#0d6efd; font-size:.85rem; }
   .btn-texto:disabled { color:#ced4da; }
@@ -137,87 +150,102 @@
               </div>
             </div>
 
-            <div class="row g-5 mb-5">
+            <!-- MODO -->
+            <div class="mb-5">
+              <div class="titulo-seccion mb-1">¿Cómo se le cobra?</div>
+              <div class="small suave mb-3">Lo normal en un parqueadero es Combinado.</div>
 
-              <!-- MODO -->
-              <div class="col-md-5">
-                <div class="titulo-seccion mb-3">¿Cómo se le cobra?</div>
-                <label class="opcion-modo" data-modo="minuto">
-                  <div class="modo-nombre">Por minuto</div>
-                  <div class="small suave">Paga lo que estuvo</div>
-                </label>
-                <label class="opcion-modo" data-modo="hora">
-                  <div class="modo-nombre">Por hora</div>
-                  <div class="small suave">Lo más común</div>
-                </label>
-                <label class="opcion-modo" data-modo="dia">
-                  <div class="modo-nombre">Por día</div>
-                  <div class="small suave">Estadías largas</div>
-                </label>
-                <label class="opcion-modo" data-modo="mixto">
-                  <div class="modo-nombre">Combinado</div>
-                  <div class="small suave">Cambia según el rato</div>
-                </label>
-              </div>
-
-              <!-- PRECIOS -->
-              <div class="col-md-7">
-                <div class="titulo-seccion mb-3">¿Cuánto cobra?</div>
-
-                <div class="campo-precio mb-4" id="wrapMinuto">
-                  <div class="rotulo mb-1">Cada minuto</div>
-                  <div class="d-flex align-items-baseline gap-2">
-                    <span class="suave">$</span>
-                    <input type="number" min="0" step="1" id="valorMinuto" class="form-control linea" value="0">
-                  </div>
-                  <div class="eco" id="ecoMinuto"></div>
+              <div class="row g-0">
+                <div class="col-sm-6">
+                  <label class="opcion-modo" data-modo="minuto">
+                    <div class="modo-nombre">Solo por minuto</div>
+                    <div class="small suave">Paga exacto lo que estuvo</div>
+                  </label>
+                  <label class="opcion-modo" data-modo="hora">
+                    <div class="modo-nombre">Solo por hora</div>
+                    <div class="small suave">Cobra la hora completa</div>
+                  </label>
                 </div>
-
-                <div class="campo-precio mb-4" id="wrapHora">
-                  <div class="rotulo mb-1">Cada hora</div>
-                  <div class="d-flex align-items-baseline gap-2">
-                    <span class="suave">$</span>
-                    <input type="number" min="0" step="1" id="valorHora" class="form-control linea" value="0">
-                  </div>
-                  <div class="eco" id="ecoHora"></div>
-                </div>
-
-                <div class="campo-precio mb-4" id="wrapDia">
-                  <div class="rotulo mb-1">Cada día</div>
-                  <div class="d-flex align-items-baseline gap-2">
-                    <span class="suave">$</span>
-                    <input type="number" min="0" step="1" id="valorDia" class="form-control linea" value="0">
-                  </div>
-                  <div class="eco" id="ecoDia"></div>
+                <div class="col-sm-6">
+                  <label class="opcion-modo" data-modo="dia">
+                    <div class="modo-nombre">Solo por día</div>
+                    <div class="small suave">Precio fijo sin importar el rato</div>
+                  </label>
+                  <label class="opcion-modo" data-modo="mixto">
+                    <div class="modo-nombre">Combinado</div>
+                    <div class="small suave">Minutos, luego horas, luego el día</div>
+                  </label>
                 </div>
               </div>
             </div>
 
-            <!-- COMBINADO -->
-            <div class="mb-5 d-none" id="cardCombinado">
-              <div class="titulo-seccion mb-3">¿Cuándo cambia de precio?</div>
-              <div class="row g-4">
-                <div class="col-md-6">
-                  <div class="rotulo mb-1">Cobra por minuto hasta los</div>
-                  <div class="d-flex align-items-baseline gap-2">
-                    <input type="number" min="0" step="1" id="pasoMinutos" class="form-control linea" value="0">
-                    <span class="small suave text-nowrap">minutos</span>
+            <!-- PRECIOS POR TRAMO -->
+            <div class="mb-5">
+              <div class="titulo-seccion mb-1">¿Cuánto cobra?</div>
+              <div class="small suave mb-3" id="ayudaPrecios"></div>
+
+              <!-- MINUTO -->
+              <div class="tramo" id="wrapMinuto">
+                <div class="d-flex align-items-end flex-wrap gap-4">
+                  <div class="tramo-precio">
+                    <div class="rotulo mb-1">Por cada minuto</div>
+                    <div class="d-flex align-items-baseline gap-2">
+                      <span class="suave">$</span>
+                      <input type="number" min="0" step="10" id="valorMinuto" class="form-control linea" value="0">
+                    </div>
+                  </div>
+                  <div class="tramo-hasta ms-auto d-none" id="hastaMinuto">
+                    <div class="rotulo mb-1">Hasta los</div>
+                    <div class="d-flex align-items-baseline gap-2">
+                      <input type="number" min="0" step="5" id="pasoMinutos" class="form-control form-control-sm linea" value="60">
+                      <span class="small suave text-nowrap">minutos</span>
+                    </div>
                   </div>
                 </div>
-                <div class="col-md-6">
-                  <div class="rotulo mb-1">Después por hora hasta las</div>
-                  <div class="d-flex align-items-baseline gap-2">
-                    <input type="number" min="0" step="1" id="pasoHoras" class="form-control linea" value="0">
-                    <span class="small suave text-nowrap">horas</span>
-                  </div>
-                </div>
+                <div class="tramo-desc mt-2" id="descMinuto"></div>
               </div>
-              <div class="small suave mt-3">Pasadas esas horas, se cobra por día.</div>
+
+              <!-- HORA -->
+              <div class="tramo" id="wrapHora">
+                <div class="d-flex align-items-end flex-wrap gap-4">
+                  <div class="tramo-precio">
+                    <div class="rotulo mb-1">Por cada hora</div>
+                    <div class="d-flex align-items-baseline gap-2">
+                      <span class="suave">$</span>
+                      <input type="number" min="0" step="500" id="valorHora" class="form-control linea" value="0">
+                    </div>
+                  </div>
+                  <div class="tramo-hasta ms-auto d-none" id="hastaHora">
+                    <div class="rotulo mb-1">Hasta las</div>
+                    <div class="d-flex align-items-baseline gap-2">
+                      <input type="number" min="0" step="1" id="pasoHoras" class="form-control form-control-sm linea" value="5">
+                      <span class="small suave text-nowrap">horas</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tramo-desc mt-2" id="descHora"></div>
+              </div>
+
+              <!-- DÍA -->
+              <div class="tramo" id="wrapDia">
+                <div class="tramo-precio">
+                  <div class="rotulo mb-1">Por el día completo</div>
+                  <div class="d-flex align-items-baseline gap-2">
+                    <span class="suave">$</span>
+                    <input type="number" min="0" step="1000" id="valorDia" class="form-control linea" value="0">
+                  </div>
+                </div>
+                <div class="tramo-desc mt-2" id="descDia"></div>
+              </div>
+
+              <!-- Aviso cuando las horas se pasan del precio del dia -->
+              <div class="small text-danger mt-3 d-none" id="avisoTope"></div>
             </div>
 
             <!-- REDONDEO -->
             <div class="mb-5" id="cardRedondeo">
-              <div class="titulo-seccion mb-3">¿Cómo cuenta las fracciones?</div>
+              <div class="titulo-seccion mb-1">¿Cómo cuenta las fracciones?</div>
+              <div class="small suave mb-3">Qué pasa cuando el rato no da exacto.</div>
               <div class="row g-4">
                 <div class="col-md-6" id="wrapRedHoras">
                   <div class="rotulo mb-1">Si lleva 1 hora y 5 minutos…</div>
@@ -236,10 +264,13 @@
               </div>
             </div>
 
-            <!-- RESUMEN -->
-            <div class="resumen mb-4">
-              <div class="rotulo mb-2">Así va a quedar</div>
-              <div id="resumenTarifa">—</div>
+            <!-- EJEMPLOS -->
+            <div class="pt-4 linea-fina mb-4">
+              <div class="titulo-seccion mb-1">Lo que va a pagar el cliente</div>
+              <div class="small suave mb-3">Se actualiza mientras escribes.</div>
+              <table class="ejemplos">
+                <tbody id="tablaEjemplos"></tbody>
+              </table>
             </div>
 
             <div class="d-flex justify-content-end align-items-center gap-4 mb-5">
@@ -367,9 +398,11 @@ function nombreTipo(t){ return campo(t,['nombre','descripcion','tipo'],'Tipo ' +
 function activoTipo(t){ return Number(campo(t,['activo','estado','is_activo'],1)) ? true : false; }
 function cuposTipo(t){ return campo(t,['capacidad','cupos','capacidad_total'], null); }
 
+/* El backend devuelve la tarifa con id_tipo. Se prueban varios nombres por si
+   alguna ruta vieja usa otro. */
 function tarifaDe(tipoId){
   return S.tarifas.find(x =>
-    String(campo(x,['id_tipo_vehiculo','id_tipo','tipo_id','id_tipo_veh'])) === String(tipoId)) || null;
+    String(campo(x,['id_tipo','id_tipo_vehiculo','tipo_id','id_tipo_veh'])) === String(tipoId)) || null;
 }
 
 async function cargarTodo(){
@@ -450,23 +483,33 @@ function seleccionar(id){
   $('tipoActivo').checked = activoTipo(t);
 
   const tf = tarifaDe(id);
-  const modo = tf ? String(campo(tf,['modo_cobro','modo'],'hora')) : 'hora';
+  const modo = tf ? String(campo(tf,['modo_cobro','modo'],'hora')) : 'mixto';
 
-  $('valorMinuto').value = tf ? (campo(tf,['valor_minuto'],0) || 0) : 0;
-  $('valorHora').value   = tf ? (campo(tf,['valor_hora'],0) || 0) : 0;
-  $('valorDia').value    = tf ? (campo(tf,['valor_dia_completo','valor_dia'],0) || 0) : 0;
-  $('pasoMinutos').value = tf ? (campo(tf,['paso_minutos_a_horas'],0) || 0) : 0;
-  $('pasoHoras').value   = tf ? (campo(tf,['paso_horas_a_dias'],0) || 0) : 0;
+  /* Los valores llegan de MySQL como "6000.00". Se pasan a entero porque en
+     pesos no hay centavos y el .00 confunde al que configura. */
+  const ent = v => Math.round(Number(v) || 0);
+
+  $('valorMinuto').value = tf ? ent(campo(tf,['valor_minuto'],0)) : 0;
+  $('valorHora').value   = tf ? ent(campo(tf,['valor_hora'],0)) : 0;
+  $('valorDia').value    = tf ? ent(campo(tf,['valor_dia_completo','valor_dia'],0)) : 0;
+
+  /* Si nunca se configuraron los cortes quedan en cero, y con cero el cobro
+     por minuto y por hora no aplican nunca: todo salta a dia completo. Por eso
+     un tipo sin configurar arranca con los valores tipicos de parqueadero. */
+  const pM = tf ? ent(campo(tf,['paso_minutos_a_horas'],0)) : 0;
+  const pH = tf ? ent(campo(tf,['paso_horas_a_dias'],0)) : 0;
+  $('pasoMinutos').value = pM > 0 ? pM : 60;
+  $('pasoHoras').value   = pH > 0 ? pH : 5;
+
   $('redondeoHoras').value = tf ? String(campo(tf,['redondeo_horas'],'arriba')) : 'arriba';
   $('redondeoDias').value  = tf ? String(campo(tf,['redondeo_dias'],'arriba')) : 'arriba';
 
   aplicarModo(modo);
   pintarLista();
-  refrescarEcos();
 }
 
 /* ---------- modo ---------- */
-let MODO = 'hora';
+let MODO = 'mixto';
 
 function mostrar(el, visible){
   if(!el) return;
@@ -482,59 +525,129 @@ function aplicarModo(modo){
   mostrar($('wrapHora'),   modo === 'hora'   || modo === 'mixto');
   mostrar($('wrapDia'),    modo === 'dia'    || modo === 'mixto');
 
-  mostrar($('cardCombinado'), modo === 'mixto');
+  /* Los cortes solo tienen sentido en combinado: en los otros modos hay un
+     solo precio y no hay de que a que cambiar. */
+  mostrar($('hastaMinuto'), modo === 'mixto');
+  mostrar($('hastaHora'),   modo === 'mixto');
+
   mostrar($('wrapRedHoras'),  modo === 'hora' || modo === 'mixto');
   mostrar($('wrapRedDias'),   modo === 'dia'  || modo === 'mixto');
   mostrar($('cardRedondeo'),  modo !== 'minuto');
 
-  pintarResumen();
+  const ayudas = {
+    minuto: 'Se cobra exacto por los minutos que estuvo, sin importar cuánto se quede.',
+    hora:   'Se cobra por horas. Una fracción cuenta como hora completa.',
+    dia:    'Precio fijo por día, sin importar si se queda una hora o diez.',
+    mixto:  'El precio cambia según el rato: primero minutos, después horas, después el día.'
+  };
+  $('ayudaPrecios').textContent = ayudas[modo] || '';
+
+  refrescar();
 }
 
 document.querySelectorAll('.opcion-modo').forEach(l =>
   l.addEventListener('click', () => aplicarModo(l.dataset.modo)));
 
-/* ---------- ecos y resumen ---------- */
-function eco(idIn, idEco, sufijo){
-  const i = $(idIn), e = $(idEco);
-  const f = () => {
-    const v = Number(i.value) || 0;
-    e.textContent = v > 0 ? pesos(v) + sufijo : '';
-    pintarResumen();
-  };
-  i.addEventListener('input', f);
-  return f;
+/* ---------- calculo del cobro ----------
+   Replica la logica del backend para poder mostrar los ejemplos en vivo.
+   Si el backend cambia la formula, hay que cambiarla aqui tambien.        */
+function cobroDe(minutos){
+  const min = Number($('valorMinuto').value) || 0;
+  const hor = Number($('valorHora').value) || 0;
+  const dia = Number($('valorDia').value) || 0;
+  const pM  = Number($('pasoMinutos').value) || 0;
+  const pH  = Number($('pasoHoras').value) || 0;
+  const arribaH = $('redondeoHoras').value === 'arriba';
+  const arribaD = $('redondeoDias').value === 'arriba';
+
+  if(MODO === 'minuto') return minutos * min;
+
+  if(MODO === 'hora'){
+    const h = arribaH ? Math.ceil(minutos/60) : Math.floor(minutos/60) || 1;
+    return h * hor;
+  }
+
+  if(MODO === 'dia'){
+    const d = arribaD ? Math.ceil(minutos/1440) : Math.floor(minutos/1440) || 1;
+    return d * dia;
+  }
+
+  // combinado
+  if(pM > 0 && minutos <= pM) return minutos * min;
+
+  const horas = minutos / 60;
+  if(pH > 0 && horas <= pH){
+    const h = arribaH ? Math.ceil(horas) : Math.floor(horas) || 1;
+    return h * hor;
+  }
+
+  const d = arribaD ? Math.ceil(minutos/1440) : Math.floor(minutos/1440) || 1;
+  return d * dia;
 }
-const ecoMin = eco('valorMinuto','ecoMinuto',' por minuto');
-const ecoHor = eco('valorHora','ecoHora',' por hora');
-const ecoDia = eco('valorDia','ecoDia',' por día');
-function refrescarEcos(){ ecoMin(); ecoHor(); ecoDia(); }
 
-['pasoMinutos','pasoHoras','redondeoHoras','redondeoDias'].forEach(id => {
-  $(id).addEventListener('input', pintarResumen);
-  $(id).addEventListener('change', pintarResumen);
-});
+/* ---------- ejemplos y avisos ---------- */
+const EJEMPLOS = [
+  { min: 15,   texto: '15 minutos' },
+  { min: 45,   texto: '45 minutos' },
+  { min: 90,   texto: '1 hora y media' },
+  { min: 180,  texto: '3 horas' },
+  { min: 480,  texto: '8 horas' },
+  { min: 1440, texto: 'Un día entero' }
+];
 
-function pintarResumen(){
-  if(!S.sel){ $('resumenTarifa').textContent = '—'; return; }
-  const t = S.tipos.find(x => String(idTipo(x)) === String(S.sel));
-  const nom = t ? nombreTipo(t) : 'este vehículo';
-
+function refrescar(){
+  // descripciones bajo cada precio
   const min = Number($('valorMinuto').value) || 0;
   const hor = Number($('valorHora').value) || 0;
   const dia = Number($('valorDia').value) || 0;
   const pM  = Number($('pasoMinutos').value) || 0;
   const pH  = Number($('pasoHoras').value) || 0;
 
-  let t2;
-  if(MODO === 'minuto')      t2 = 'A cada ' + nom + ' se le cobra ' + pesos(min) + ' por minuto.';
-  else if(MODO === 'hora')   t2 = 'A cada ' + nom + ' se le cobra ' + pesos(hor) + ' por hora.';
-  else if(MODO === 'dia')    t2 = 'A cada ' + nom + ' se le cobra ' + pesos(dia) + ' por día.';
-  else t2 = 'A cada ' + nom + ': los primeros ' + pM + ' minutos a ' + pesos(min) +
-            ' cada uno. De ahí hasta las ' + pH + ' horas, ' + pesos(hor) +
-            ' la hora. Pasadas esas horas, ' + pesos(dia) + ' el día.';
+  $('descMinuto').textContent = min > 0
+    ? (MODO === 'mixto'
+        ? '10 minutos son ' + pesos(min*10) + '. Media hora, ' + pesos(min*30) + '.'
+        : '10 minutos son ' + pesos(min*10) + '.')
+    : '';
 
-  $('resumenTarifa').textContent = t2;
+  $('descHora').textContent = hor > 0
+    ? (MODO === 'mixto' && pH > 0
+        ? '2 horas son ' + pesos(hor*2) + '. ' + pH + ' horas, ' + pesos(hor*pH) + '.'
+        : '2 horas son ' + pesos(hor*2) + '.')
+    : '';
+
+  $('descDia').textContent = dia > 0
+    ? (MODO === 'mixto' && pH > 0
+        ? 'Pasadas las ' + pH + ' horas se cobra esto, sin importar cuánto más se quede.'
+        : 'Precio fijo del día.')
+    : '';
+
+  // aviso: si las horas acumuladas pasan el precio del dia, el cliente
+  // termina pagando mas por quedarse menos tiempo.
+  const aviso = $('avisoTope');
+  if(MODO === 'mixto' && hor > 0 && dia > 0 && pH > 0 && hor * pH > dia){
+    const horasJustas = Math.floor(dia / hor);
+    aviso.textContent = 'Ojo: a las ' + pH + ' horas el cliente pagaría ' + pesos(hor*pH) +
+      ', más que el día completo (' + pesos(dia) + '). Baja el corte a ' + horasJustas +
+      ' horas o sube el precio del día.';
+    aviso.classList.remove('d-none');
+  }else{
+    aviso.classList.add('d-none');
+  }
+
+  // tabla de ejemplos
+  $('tablaEjemplos').innerHTML = EJEMPLOS.map(e => {
+    const v = cobroDe(e.min);
+    const tope = (dia > 0 && v >= dia && MODO === 'mixto') ? ' class="tope"' : '';
+    return '<tr' + tope + '><td>' + e.texto + '</td><td>' + pesos(v) + '</td></tr>';
+  }).join('');
 }
+
+['valorMinuto','valorHora','valorDia','pasoMinutos','pasoHoras'].forEach(id => {
+  $(id).addEventListener('input', refrescar);
+});
+['redondeoHoras','redondeoDias'].forEach(id => {
+  $(id).addEventListener('change', refrescar);
+});
 
 /* ---------- guardar tipo ---------- */
 $('btnGuardarTipo').addEventListener('click', async () => {
@@ -563,27 +676,33 @@ $('btnGuardarTarifa').addEventListener('click', async () => {
   const min = Number($('valorMinuto').value) || 0;
   const hor = Number($('valorHora').value) || 0;
   const dia = Number($('valorDia').value) || 0;
+  const pM  = Number($('pasoMinutos').value) || 0;
+  const pH  = Number($('pasoHoras').value) || 0;
 
   if(MODO === 'minuto' && min <= 0) return avisar('alerta','Pon el precio por minuto.');
   if(MODO === 'hora'   && hor <= 0) return avisar('alerta','Pon el precio por hora.');
   if(MODO === 'dia'    && dia <= 0) return avisar('alerta','Pon el precio por día.');
-  if(MODO === 'mixto'  && (min <= 0 || hor <= 0 || dia <= 0))
-    return avisar('alerta','En combinado hacen falta los tres precios.');
+  if(MODO === 'mixto'){
+    if(min <= 0 || hor <= 0 || dia <= 0)
+      return avisar('alerta','En combinado hacen falta los tres precios.');
+    if(pM <= 0 || pH <= 0)
+      return avisar('alerta','Pon hasta qué minuto y hasta qué hora aplica cada precio.');
+  }
 
   btn.disabled = true; btn.textContent = 'Guardando…';
   try{
-      await api(CFG.tarifaGuardar, { method:'PUT', body: JSON.stringify({
-      /* El backend lee req.body.id_tipo. Antes se mandaba id_tipo_vehiculo y
-         llegaba undefined, asi que respondia "Debe seleccionar un tipo de
-         vehiculo" aunque el tipo estuviera bien seleccionado en pantalla. */
+    await api(CFG.tarifaGuardar, { method:'PUT', body: JSON.stringify({
+      /* El backend lee req.body.id_tipo. Antes se mandaba solo
+         id_tipo_vehiculo y llegaba undefined, asi que respondia "Debe
+         seleccionar un tipo de vehiculo" con el tipo bien seleccionado. */
       id_tipo: Number(S.sel),
       id_tipo_vehiculo: Number(S.sel),
       modo_cobro: MODO,
       valor_minuto: min,
       valor_hora: hor,
       valor_dia_completo: dia,
-      paso_minutos_a_horas: Number($('pasoMinutos').value) || 0,
-      paso_horas_a_dias: Number($('pasoHoras').value) || 0,
+      paso_minutos_a_horas: pM,
+      paso_horas_a_dias: pH,
       redondeo_horas: $('redondeoHoras').value,
       redondeo_dias: $('redondeoDias').value
     })});
