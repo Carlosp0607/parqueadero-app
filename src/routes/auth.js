@@ -37,6 +37,81 @@ const checkFailedAttempts = async (id_empresa, usuario, ip) => {
     }
 };
 
+// ---------------------------------------------------------------------------
+// Estado de la suscripcion
+//
+// La columna empresas.fecha_vencimiento existia desde el principio y el codigo
+// NUNCA la consultaba: un parqueadero que dejaba de pagar seguia entrando,
+// para siempre, sin forma de sacarlo salvo apagando la empresa a mano en la
+// base de datos.
+//
+// Reglas:
+//   - fecha_vencimiento NULL  ->  sin vencimiento. No se corta nada.
+//   - vencida hace 0 a 5 dias ->  entra igual, pero se le avisa. Nadie deja a
+//                                 un parqueadero sin cobrar por olvidar una
+//                                 transferencia de un dia.
+//   - vencida hace mas de 5   ->  no entra.
+//
+// Si la columna no existe todavia, se responde como si no hubiera vencimiento.
+// Es preferible dejar entrar a tumbar el login de todos por una migracion.
+// ---------------------------------------------------------------------------
+const DIAS_DE_GRACIA = 5;
+
+async function estadoSuscripcion(id_empresa) {
+    let fila;
+    try {
+        const [rows] = await pool.query(
+            `SELECT fecha_vencimiento,
+                    DATEDIFF(CURDATE(), fecha_vencimiento) AS dias_vencida
+             FROM empresas WHERE id_empresa = ?`,
+            [id_empresa]
+        );
+        fila = rows[0];
+    } catch (e) {
+        if (e.code === 'ER_BAD_FIELD_ERROR') {
+            return { bloquear: false, avisar: false };
+        }
+        throw e;
+    }
+
+    if (!fila || fila.fecha_vencimiento == null) {
+        return { bloquear: false, avisar: false };
+    }
+
+    const dias = Number(fila.dias_vencida);
+
+    // Todavia al dia. Se avisa cuando faltan 5 dias o menos.
+    if (dias < 0) {
+        const faltan = Math.abs(dias);
+        return {
+            bloquear: false,
+            avisar: faltan <= 5,
+            mensaje: faltan === 0
+                ? 'Tu plan vence hoy.'
+                : 'Tu plan vence en ' + faltan + (faltan === 1 ? ' día.' : ' días.')
+        };
+    }
+
+    // Vencida, pero dentro de la gracia.
+    if (dias <= DIAS_DE_GRACIA) {
+        const quedan = DIAS_DE_GRACIA - dias;
+        return {
+            bloquear: false,
+            avisar: true,
+            mensaje: 'Tu plan está vencido. Tienes ' + quedan +
+                     (quedan === 1 ? ' día' : ' días') +
+                     ' para ponerte al día antes de que se suspenda el acceso.'
+        };
+    }
+
+    // Vencida y sin gracia.
+    return {
+        bloquear: true,
+        mensaje: 'El plan de este parqueadero está vencido y el acceso quedó ' +
+                 'suspendido. Comunícate para reactivarlo.'
+    };
+}
+
 router.post('/login', validateLoginData, async (req, res) => {
     // Normalización de entradas para evitar problemas de espacios/caso
     const empresa = typeof req.body.empresa === 'string' ? req.body.empresa.trim() : req.body.empresa;
@@ -96,6 +171,26 @@ router.post('/login', validateLoginData, async (req, res) => {
             });
         }
 
+        // Corte por falta de pago. Se revisa DESPUES de validar la contraseña
+        // para no revelarle a un extraño el estado de pago de un parqueadero
+        // ajeno solo con probar NITs.
+        let suscripcion = { bloquear: false, avisar: false };
+        try {
+            suscripcion = await estadoSuscripcion(id_empresa);
+        } catch (e) {
+            console.error('[auth] No se pudo verificar el vencimiento:', e.message);
+        }
+
+        if (suscripcion.bloquear) {
+            await logLoginAttempt(id_empresa, usuario, false, ip);
+            console.warn(`[auth] Acceso bloqueado por vencimiento. Empresa ${id_empresa}.`);
+            return res.status(402).json({
+                success: false,
+                message: suscripcion.mensaje,
+                codigo: 'PLAN_VENCIDO'
+            });
+        }
+
         // Obtener configuración de la empresa
         const [config] = await pool.query(
             'SELECT * FROM configuracion_empresa WHERE id_empresa = ?',
@@ -144,7 +239,9 @@ router.post('/login', validateLoginData, async (req, res) => {
                 id_empresa: user.id_empresa,
                 empresa: empresas[0],
                 config: config[0],
-                token
+                token,
+                // El frontend muestra este aviso si viene. No bloquea nada.
+                aviso_plan: suscripcion.avisar ? suscripcion.mensaje : null
             },
             message: 'Inicio de sesión exitoso'
         });
