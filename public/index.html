@@ -120,6 +120,22 @@
        No toca el envío del formulario: eso sigue en js/login.js. */
     (function () {
       'use strict';
+              // Aviso de sesion cerrada.
+      // menu.js manda a /?expirada=1 cuando el token muere estando el operador
+      // adentro. Sin este aviso el login aparece mudo y parece que el sistema
+      // se cayo solo.
+      try {
+        if (new URLSearchParams(window.location.search).has('expirada')) {
+          var aviso = document.createElement('div');
+          aviso.className = 'alert alert-warning text-center py-2 mb-4';
+          aviso.innerHTML = '<small>Tu sesión se cerró por seguridad. Vuelve a entrar.</small>';
+          var tarjeta = document.querySelector('.card-body');
+          var form = document.getElementById('loginForm');
+          if (tarjeta && form) tarjeta.insertBefore(aviso, form);
+          // Se limpia la URL para que al recargar no vuelva a salir el aviso.
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (e) { /* navegador sin URLSearchParams */ }
       var CLAVE = 'ps_ultimo_nit';
       var campo = document.getElementById('empresa');
       var form  = document.getElementById('loginForm');
