@@ -1,0 +1,87 @@
+# Copia de seguridad automatica de la base de datos.
+#
+# Corre sola cada noche y guarda un volcado completo de MySQL como artifact
+# de GitHub, con 30 dias de retencion. Tambien se puede disparar a mano desde
+# la pestana Actions con el boton "Run workflow".
+#
+# Por que existe: Aiven ya apago el servicio una vez por inactividad y el
+# login fallo con ENOTFOUND. Los datos se salvaron porque estaba apagado, no
+# eliminado. Con clientes pagando, un accidente sin copia es el fin.
+#
+# Las credenciales viven en Settings > Secrets and variables > Actions.
+# Nunca van escritas en este archivo.
+
+name: Backup MySQL
+
+on:
+  schedule:
+    # 08:00 UTC = 3:00 a.m. en Colombia. Hora muerta en un parqueadero.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente de MySQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+
+      - name: Volcar la base de datos
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          FECHA=$(date -u +%Y-%m-%d)
+          ARCHIVO="backup-${DB_NAME}-${FECHA}.sql"
+
+          # --ssl-mode=REQUIRED porque Aiven no acepta conexiones sin cifrar.
+          # --single-transaction toma una foto consistente sin bloquear las
+          # tablas, asi el parqueadero puede seguir operando mientras corre.
+          # --set-gtid-purged=OFF evita que el volcado traiga instrucciones de
+          # replicacion que estorban al restaurar en otro servidor.
+          mysqldump \
+            --host="$DB_HOST" \
+            --port="$DB_PORT" \
+            --user="$DB_USER" \
+            --password="$DB_PASSWORD" \
+            --ssl-mode=REQUIRED \
+            --single-transaction \
+            --routines \
+            --triggers \
+            --events \
+            --set-gtid-purged=OFF \
+            --databases "$DB_NAME" > "$ARCHIVO"
+
+          # Si el volcado salio vacio o casi vacio, algo fallo. Mejor que el
+          # job reviente ahora y llegue el correo, a guardar un archivo inutil
+          # y darse cuenta el dia que haya que restaurar.
+          TAMANO=$(stat -c%s "$ARCHIVO")
+          echo "Volcado: $ARCHIVO ($TAMANO bytes)"
+          if [ "$TAMANO" -lt 1000 ]; then
+            echo "El volcado quedo demasiado pequeno. Algo fallo."
+            exit 1
+          fi
+
+          gzip "$ARCHIVO"
+          echo "NOMBRE=${ARCHIVO}.gz" >> "$GITHUB_ENV"
+          echo "FECHA=${FECHA}" >> "$GITHUB_ENV"
+
+      - name: Guardar la copia
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ env.FECHA }}
+          path: ${{ env.NOMBRE }}
+          retention-days: 30
+
+      - name: Resumen
+        run: |
+          echo "Copia guardada: ${NOMBRE}"
+          echo "Se descarga desde la pestana Actions, en este mismo job."
+          echo "Para restaurar: gunzip archivo.sql.gz y luego"
+          echo "  mysql --host=... --user=... --password=... < archivo.sql"
