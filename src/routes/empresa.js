@@ -10,6 +10,21 @@ const path = require('path');
 // Configuración de subida en memoria para almacenar BLOB en BD
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
+// ---------------------------------------------------------------------------
+// Detecta el tipo de imagen leyendo los primeros bytes del Buffer.
+// Se usa para servir el logo y el QR de pago con el Content-Type correcto.
+// ---------------------------------------------------------------------------
+function tipoImagen(buf) {
+    if (!Buffer.isBuffer(buf)) return 'image/png';
+    const b0 = buf[0], b1 = buf[1], b2 = buf[2], b3 = buf[3];
+    if (b0 === 0xFF && b1 === 0xD8 && b2 === 0xFF) return 'image/jpeg';
+    if (b0 === 0x89 && b1 === 0x50 && b2 === 0x4E && b3 === 0x47) return 'image/png';
+    if (b0 === 0x47 && b1 === 0x49 && b2 === 0x46 && b3 === 0x38) return 'image/gif';
+    return 'image/png';
+}
+
+const MIMES_PERMITIDOS = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+
 // Obtener info de la empresa del usuario autenticado
 router.get('/me', verifyToken, async (req, res) => {
     try {
@@ -20,7 +35,19 @@ router.get('/me', verifyToken, async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Empresa no encontrada' });
         }
-        res.json({ success: true, data: rows[0] });
+
+        // La pantalla de cobro necesita saber si hay QR cargado. Se consulta
+        // aparte porque la columna puede no existir todavia en bases viejas.
+        let tiene_qr = false;
+        try {
+            const [q] = await pool.query(
+                'SELECT qr_pago IS NOT NULL AS tiene FROM empresas WHERE id_empresa = ?',
+                [req.user.id_empresa]
+            );
+            tiene_qr = !!(q.length && q[0].tiene);
+        } catch (e) { /* la columna aun no existe */ }
+
+        res.json({ success: true, data: { ...rows[0], tiene_qr } });
     } catch (error) {
         console.error('Error empresa/me:', error);
         res.status(500).json({ success: false, message: 'Error al obtener la empresa' });
@@ -121,15 +148,7 @@ router.get('/logo', verifyToken, async (req, res) => {
         const [rows] = await pool.query('SELECT logo_url FROM empresas WHERE id_empresa = ?', [req.user.id_empresa]);
         if (!rows.length || rows[0].logo_url == null) return res.status(404).json({ success:false, message:'Logo no configurado' });
         const buf = rows[0].logo_url; // Buffer
-        // Detección simple de tipo
-        let mime = 'image/png';
-        if (Buffer.isBuffer(buf)) {
-            const b0 = buf[0], b1 = buf[1], b2 = buf[2], b3 = buf[3];
-            if (b0 === 0xFF && b1 === 0xD8 && b2 === 0xFF) mime = 'image/jpeg';
-            else if (b0 === 0x89 && b1 === 0x50 && b2 === 0x4E && b3 === 0x47) mime = 'image/png';
-            else if (b0 === 0x47 && b1 === 0x49 && b2 === 0x46 && b3 === 0x38) mime = 'image/gif';
-        }
-        res.set('Content-Type', mime);
+        res.set('Content-Type', tipoImagen(buf));
         res.send(buf);
     } catch (error) {
         console.error('Error leyendo logo:', error);
@@ -142,8 +161,7 @@ router.post('/logo', verifyToken, requireAdmin, upload.single('logo'), async (re
     try {
         if (!req.file || !req.file.buffer) return res.status(400).json({ success:false, message:'Archivo no recibido' });
         // Validación de tipo (PNG/JPG/JPEG/GIF)
-        const mimeAllowed = ['image/png','image/jpeg','image/jpg','image/gif'];
-        if (!mimeAllowed.includes(req.file.mimetype)) {
+        if (!MIMES_PERMITIDOS.includes(req.file.mimetype)) {
             return res.status(400).json({ success:false, message:'Tipo de archivo no permitido. Usa PNG o JPG.' });
         }
         // Migración: asegurar tipo BLOB en empresas.logo_url
@@ -169,6 +187,96 @@ router.post('/logo', verifyToken, requireAdmin, upload.single('logo'), async (re
     }
 });
 
+// ---------------------------------------------------------------------------
+// QR DE PAGO
+//
+// Es la imagen del QR fijo que el parqueadero ya tiene pegado en la caseta
+// (Nequi, Daviplata, Bancolombia, Bre-B o el que sea). Se sube una vez y el
+// operador la muestra en pantalla al cobrar, para que el cliente escanee.
+//
+// IMPORTANTE: esto NO es una pasarela de pago. El sistema no cobra ni verifica
+// nada. El QR es estatico y no lleva el monto. El operador confirma a mano que
+// le llego la plata mirando su celular, igual que hoy. La ventaja es que no
+// toca tener el QR impreso ni buscarlo.
+// ---------------------------------------------------------------------------
+
+// Crea la columna qr_pago si no existe. Se llama antes de guardar.
+async function asegurarColumnaQR() {
+    try {
+        await pool.query('ALTER TABLE empresas ADD COLUMN qr_pago LONGBLOB NULL');
+    } catch (e) {
+        // ER_DUP_FIELDNAME = la columna ya existe, es lo esperado.
+        if (e.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+}
+
+// Devuelve la imagen del QR. Cualquier usuario logueado puede verla, porque
+// el operador la necesita al cobrar, no solo el admin.
+router.get('/qr-pago', verifyToken, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT qr_pago FROM empresas WHERE id_empresa = ?',
+            [req.user.id_empresa]
+        );
+        if (!rows.length || rows[0].qr_pago == null) {
+            return res.status(404).json({ success:false, message:'No hay QR de pago cargado' });
+        }
+        const buf = rows[0].qr_pago;
+        res.set('Content-Type', tipoImagen(buf));
+        res.send(buf);
+    } catch (error) {
+        // Si la columna no existe todavia se responde 404, no 500: para el
+        // frontend es lo mismo que "no hay QR cargado".
+        if (error && error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(404).json({ success:false, message:'No hay QR de pago cargado' });
+        }
+        console.error('Error leyendo QR de pago:', error);
+        res.status(500).json({ success:false, message:'Error al obtener el QR de pago' });
+    }
+});
+
+// Sube o reemplaza el QR de pago (solo admin).
+router.post('/qr-pago', verifyToken, requireAdmin, upload.single('qr'), async (req, res) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({ success:false, message:'Archivo no recibido' });
+        }
+        if (!MIMES_PERMITIDOS.includes(req.file.mimetype)) {
+            return res.status(400).json({ success:false, message:'Tipo de archivo no permitido. Usa PNG o JPG.' });
+        }
+
+        await asegurarColumnaQR();
+        await pool.query(
+            'UPDATE empresas SET qr_pago = ? WHERE id_empresa = ?',
+            [req.file.buffer, req.user.id_empresa]
+        );
+
+        res.json({
+            success: true,
+            url: `/api/empresa/qr-pago?ts=${Date.now()}`,
+            message: 'QR de pago guardado'
+        });
+    } catch (error) {
+        if (error && error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ success:false, message:'El archivo excede 2MB' });
+        }
+        console.error('Error subiendo QR de pago:', error);
+        res.status(500).json({ success:false, message:'Error al subir el QR de pago' });
+    }
+});
+
+// Quita el QR de pago (solo admin).
+router.delete('/qr-pago', verifyToken, requireAdmin, async (req, res) => {
+    try {
+        await pool.query('UPDATE empresas SET qr_pago = NULL WHERE id_empresa = ?', [req.user.id_empresa]);
+        res.json({ success:true, message:'QR de pago eliminado' });
+    } catch (error) {
+        if (error && error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.json({ success:true, message:'No había QR de pago' });
+        }
+        console.error('Error eliminando QR de pago:', error);
+        res.status(500).json({ success:false, message:'Error al eliminar el QR de pago' });
+    }
+});
+
 module.exports = router;
-
-
