@@ -48,6 +48,12 @@
   }
   .linea:focus { border-bottom-color:#0d6efd; }
 
+  /* nombre del tipo, editable en sitio */
+  #tipoNombre {
+    font-size:1.25rem; font-weight:600; padding-left:0; min-width:12rem;
+  }
+  #tipoNombre::placeholder { color:#dee2e6; font-weight:400; }
+
   /* cada tramo: precio + hasta cuando aplica, en la misma fila */
   .tramo { padding:1.1rem 0; border-bottom:1px solid #f5f6f8; }
   .tramo:last-child { border-bottom:0; }
@@ -66,6 +72,8 @@
 
   .btn-texto { background:none; border:0; padding:0; color:#0d6efd; font-size:.85rem; }
   .btn-texto:disabled { color:#ced4da; }
+  .btn-texto.peligro { color:#dc3545; }
+  .btn-texto.peligro:disabled { color:#ced4da; }
 
   .avisos { position:fixed; top:1rem; right:1rem; z-index:1080; width:22rem; max-width:calc(100vw - 2rem); }
 
@@ -131,10 +139,11 @@
           <div id="editor" class="d-none">
 
             <!-- CABECERA -->
-            <div class="d-flex align-items-end flex-wrap gap-4 mb-5">
+            <div class="d-flex align-items-end flex-wrap gap-4 mb-2">
               <div>
-                <h5 class="mb-0" id="tituloTipo">—</h5>
-                <div class="small suave" id="subtituloTipo"></div>
+                <div class="rotulo mb-1">Nombre</div>
+                <input type="text" class="form-control linea" id="tipoNombre"
+                       maxlength="40" autocomplete="off" placeholder="Camioneta">
               </div>
               <div class="ms-auto d-flex align-items-end gap-4">
                 <div>
@@ -147,8 +156,10 @@
                   <label class="form-check-label small" for="tipoActivo">Disponible</label>
                 </div>
                 <button class="btn-texto" id="btnGuardarTipo">Guardar tipo</button>
+                <button class="btn-texto peligro" id="btnEliminarTipo">Eliminar</button>
               </div>
             </div>
+            <div class="small suave mb-5" id="subtituloTipo"></div>
 
             <!-- MODO -->
             <div class="mb-5">
@@ -307,6 +318,27 @@
   </div>
 </div>
 
+<!-- CONFIRMAR ELIMINACIÓN -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Eliminar tipo</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p class="mb-2">Vas a eliminar <strong id="nombreAEliminar">—</strong>.</p>
+        <p class="small suave mb-0">
+          No se puede deshacer. Si el tipo ya tiene vehículos o tarifas, el sistema
+          lo bloquea y te ofrece desactivarlo.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger" id="btnConfirmarEliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /* ============================================================
@@ -396,13 +428,17 @@ const S = { tipos:[], tarifas:[], sel:null, rutaTipos:null };
 function idTipo(t){ return campo(t,['id','id_tipo','id_tipo_vehiculo']); }
 function nombreTipo(t){ return campo(t,['nombre','descripcion','tipo'],'Tipo ' + idTipo(t)); }
 function activoTipo(t){ return Number(campo(t,['activo','estado','is_activo'],1)) ? true : false; }
-function cuposTipo(t){ return campo(t,['capacidad','cupos','capacidad_total'], null); }
+function cuposTipo(t){ return campo(t,['capacidad_total','capacidad','cupos'], null); }
+function vehiculosTipo(t){ return Number(campo(t,['total_vehiculos'],0)) || 0; }
 
 /* El backend devuelve la tarifa con id_tipo. Se prueban varios nombres por si
    alguna ruta vieja usa otro. */
 function tarifaDe(tipoId){
   return S.tarifas.find(x =>
     String(campo(x,['id_tipo','id_tipo_vehiculo','tipo_id','id_tipo_veh'])) === String(tipoId)) || null;
+}
+function tipoPorId(id){
+  return S.tipos.find(x => String(idTipo(x)) === String(id)) || null;
 }
 
 async function cargarTodo(){
@@ -470,16 +506,24 @@ function pintarLista(){
 /* ---------- selección ---------- */
 function seleccionar(id){
   S.sel = id;
-  const t = S.tipos.find(x => String(idTipo(x)) === String(id));
+  const t = tipoPorId(id);
   if(!t) return;
 
   $('sinTipo').classList.add('d-none');
   $('editor').classList.remove('d-none');
 
-  $('tituloTipo').textContent = nombreTipo(t);
+  $('tipoNombre').value = nombreTipo(t);
+
+  /* El codigo interno no se toca al renombrar: otras pantallas lo usan como
+     identificador estable. Se muestra solo como referencia. */
   const cod = campo(t,['codigo'],'');
-  $('subtituloTipo').textContent = cod ? 'código: ' + cod : '';
-  $('tipoCupos').value = cuposTipo(t) ?? '';
+  const veh = vehiculosTipo(t);
+  $('subtituloTipo').textContent =
+    (cod ? 'código: ' + cod : '') +
+    (cod && veh ? ' · ' : '') +
+    (veh ? veh + (veh === 1 ? ' vehículo registrado' : ' vehículos registrados') : '');
+
+  $('tipoCupos').value = cuposTipo(t) || '';
   $('tipoActivo').checked = activoTipo(t);
 
   const tf = tarifaDe(id);
@@ -649,16 +693,32 @@ function refrescar(){
   $(id).addEventListener('change', refrescar);
 });
 
-/* ---------- guardar tipo ---------- */
+/* ---------- guardar tipo ----------
+   El backend exige el nombre en el PUT. Antes solo se mandaba capacidad y
+   activo, por eso respondia "El nombre es obligatorio" con el tipo bien
+   seleccionado. Ademas la capacidad se llama capacidad_total, no capacidad.
+   El codigo no se manda a proposito: renombrar no debe cambiar el
+   identificador interno que usan las otras pantallas. */
 $('btnGuardarTipo').addEventListener('click', async () => {
   if(!S.sel) return;
   const btn = $('btnGuardarTipo');
+  const nombre = $('tipoNombre').value.trim();
   const cup = $('tipoCupos').value.trim();
+
+  if(!nombre) return avisar('alerta','El tipo necesita un nombre.');
+
+  const repetido = S.tipos.some(t =>
+    String(idTipo(t)) !== String(S.sel) &&
+    nombreTipo(t).trim().toLowerCase() === nombre.toLowerCase());
+  if(repetido) return avisar('alerta','Ya hay otro tipo que se llama "' + nombre + '".');
 
   btn.disabled = true; btn.textContent = 'Guardando…';
   try{
     await api(CFG.tipoEditar + S.sel, { method:'PUT', body: JSON.stringify({
-      capacidad: cup === '' ? null : Number(cup),
+      nombre,
+      /* 0 significa sin limite. Mandar null hace que el backend ni siquiera
+         toque la capacidad, asi que no habria forma de quitar el tope. */
+      capacidad_total: cup === '' ? 0 : Number(cup),
       activo: $('tipoActivo').checked ? 1 : 0
     })});
     avisar('ok','Tipo actualizado.');
@@ -666,6 +726,47 @@ $('btnGuardarTipo').addEventListener('click', async () => {
     seleccionar(S.sel);
   }catch(e){ avisar('error', e.message); }
   finally{ btn.disabled = false; btn.textContent = 'Guardar tipo'; }
+});
+
+/* ---------- eliminar tipo ----------
+   El backend bloquea el borrado si el tipo tiene vehiculos o tarifas activas,
+   para no romper el historico de reportes. Cuando eso pasa se ofrece
+   desactivarlo, que es lo que casi siempre se busca. */
+$('btnEliminarTipo').addEventListener('click', () => {
+  if(!S.sel) return;
+  const t = tipoPorId(S.sel);
+  if(!t) return;
+  $('nombreAEliminar').textContent = nombreTipo(t);
+  bootstrap.Modal.getOrCreateInstance($('modalEliminar')).show();
+});
+
+$('btnConfirmarEliminar').addEventListener('click', async () => {
+  if(!S.sel) return;
+  const btn = $('btnConfirmarEliminar');
+  const nombre = nombreTipo(tipoPorId(S.sel) || {});
+
+  btn.disabled = true; btn.textContent = 'Eliminando…';
+  try{
+    await api(CFG.tipoEditar + S.sel, { method:'DELETE' });
+    bootstrap.Modal.getInstance($('modalEliminar')).hide();
+    avisar('ok','Tipo "' + nombre + '" eliminado.');
+    S.sel = null;
+    $('editor').classList.add('d-none');
+    $('sinTipo').classList.remove('d-none');
+    await cargarTodo();
+  }catch(e){
+    bootstrap.Modal.getInstance($('modalEliminar')).hide();
+    const bloqueado = /veh[ií]culos|tarifas/i.test(e.message || '');
+    if(bloqueado){
+      avisar('alerta', e.message +
+        ' Puedes desactivarlo: deja de recibir entradas y el histórico se conserva.');
+      $('tipoActivo').checked = false;
+      $('tipoActivo').focus();
+    }else{
+      avisar('error', e.message);
+    }
+  }
+  finally{ btn.disabled = false; btn.textContent = 'Eliminar'; }
 });
 
 /* ---------- guardar tarifa ---------- */
@@ -733,11 +834,15 @@ $('btnCrearTipo').addEventListener('click', async () => {
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
 
+  if(!codigo) return avisar('alerta','El nombre necesita al menos una letra o número.');
+
   btn.disabled = true; btn.textContent = 'Creando…';
   try{
     await api(CFG.tipoCrear, { method:'POST', body: JSON.stringify({
       nombre, codigo, activo: 1,
-      capacidad: cupos === '' ? null : Number(cupos)
+      /* El backend lee capacidad_total. Antes se mandaba capacidad y los
+         cupos del tipo nuevo se perdian en silencio. */
+      capacidad_total: cupos === '' ? 0 : Number(cupos)
     })});
     bootstrap.Modal.getInstance($('modalTipo')).hide();
     avisar('ok','Tipo "' + nombre + '" creado. Ahora ponle precio.');
