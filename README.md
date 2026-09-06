@@ -1,163 +1,115 @@
-## Sistema de Parqueadero (Multi-empresa)
+# Sistema de Parqueadero (Multi-empresa)
 
-Aplicación Node.js + Express para gestionar parqueaderos con múltiples empresas, usuarios y operaciones de ingreso/salida de vehículos, tarifas, pagos, reportes y turnos de caja. Incluye una interfaz estática en `public/` servida por el mismo servidor.
+Aplicación web para administrar parqueaderos. Registra entradas y salidas de vehículos, calcula el cobro según la tarifa, controla los turnos de caja y genera reportes de ingresos.
 
-### Características
-- Autenticación por JWT con control de intentos de login por IP/usuario.
-- Multi-empresa: aislamiento por `id_empresa` en todas las operaciones.
-- Gestión de vehículos, movimientos (ingresos/salidas), tarifas (minuto/hora/día/mixto).
-- Pagos por movimiento con métodos: efectivo, tarjeta y QR.
-- Reportes (KPIs, series por día, por método, exportación a Excel), dashboard con estadísticos.
-- Turnos de caja: apertura/cierre, totales por método, diferencias, exportación.
-- Subida y servido de logo de empresa como BLOB (sin depender de disco).
+Está pensada para atender varias empresas desde una sola instalación: cada empresa ve únicamente su propia información.
 
-### Requisitos
-- Node.js 18+ y npm
-- MariaDB/MySQL 10.4+ (probado con MariaDB)
+## Tecnologías
 
-### Instalación
-1. Clonar el repositorio
-2. Instalar dependencias:
-   ```bash
-   npm install
-   ```
-3. Configurar variables de entorno creando un archivo `.env` en la raíz:
-   ```env
-   # Puerto del servidor
-   PORT=3000
+- **Node.js + Express** — servidor y API
+- **MySQL** — base de datos (en producción, alojada en Aiven)
+- **JWT** — inicio de sesión y control de acceso
+- **HTML, CSS y JavaScript** — interfaz, servida desde `public/`
 
-   # JWT
-   JWT_SECRET=tu_secreto_jwt
+## Qué hace
 
-   # Base de datos
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=
-   DB_NAME=parqueadero
-   ```
-4. Crear la base de datos y datos iniciales ejecutando el script SQL:
-   - Abra su cliente de MariaDB/MySQL y ejecute el contenido de `schema.sql`.
-   - Esto creará la BD `parqueadero`, tablas, vistas, procedimiento y datos de ejemplo:
-     - Empresa: "Parqueadero Central" (id 1)
-     - Usuario admin: usuario `admin` con contraseña `admin123` (hash ya incluido)
-     - Tarifas base para carro/moto/bici
+- **Ingreso y salida de vehículos.** Al registrar la salida calcula el total según el tiempo y la tarifa vigente.
+- **Tarifas configurables.** Por minuto, hora, día o mixto, con tarifa distinta para carro, moto y bicicleta.
+- **Pagos.** Efectivo, tarjeta o QR.
+- **Turnos de caja.** El operador abre turno con una base inicial y al cerrar el sistema muestra los totales por método de pago y la diferencia.
+- **Mensualidades.** Suscripciones por vehículo con su propio registro de pagos.
+- **Reportes.** Ingresos por día y por método, tablas filtrables y exportación a Excel.
+- **Usuarios y roles.** Administrador y operador, con permisos distintos.
+- **Multi-empresa.** Toda consulta está filtrada por empresa; ninguna empresa ve datos de otra.
+- **Seguridad.** Control de intentos de login y consultas parametrizadas contra inyección SQL.
 
-### Ejecución
-- Desarrollo (con recarga si usa nodemon):
-  ```bash
-  npm run dev
-  ```
-- Producción:
-  ```bash
-  npm start
-  ```
-El servidor sirve la UI desde `public/` y expone la API bajo `/api/*`.
+## Requisitos
 
-Página principal: `GET /` -> `public/index.html`
+- Node.js 18 o superior
+- MySQL 8 o superior
 
-### Estructura del proyecto
+## Instalación
+
+1. Clonar el repositorio e instalar dependencias:
+
+```
+npm install
+```
+
+2. Crear un archivo `.env` en la raíz:
+
+```
+PORT=3000
+JWT_SECRET=tu_secreto_jwt
+
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=parqueadero
+```
+
+3. Ejecutar `schema.sql` en su cliente de MySQL. El script crea la base de datos, las tablas y datos de ejemplo: una empresa, un usuario administrador y las tarifas base.
+
+> **Importante:** las credenciales del script son solo para desarrollo local.
+> Cambie la contraseña del administrador antes de exponer la app a internet.
+
+Si va a desplegar en un servicio en la nube como Aiven, use `schema-cloud.sql` en su lugar: ese archivo asume que la base ya existe.
+
+## Ejecución
+
+```
+npm run dev     # desarrollo, con recarga automática
+npm start       # producción
+```
+
+La aplicación queda en `http://localhost:3000`.
+
+## Cómo se usa
+
+1. Iniciar sesión con el NIT de la empresa, usuario y contraseña.
+2. Configurar las tarifas de cada tipo de vehículo.
+3. Abrir turno de caja.
+4. Registrar ingresos y salidas de vehículos durante la jornada.
+5. Cerrar turno y revisar los totales.
+6. Consultar reportes y exportarlos a Excel.
+
+## Estructura
+
 ```
 src/
-  server.js            # Configura Express, CORS, JSON y rutas, sirve /public
-  config/db.js         # Pool MySQL/MariaDB usando mysql2/promise
-  middleware/
-    auth.js            # Verifica JWT en Authorization: Bearer <token>
-    requireAdmin.js    # Exige rol admin
-    validateLogin.js   # Valida payload de login
-  routes/
-    auth.js            # POST /api/auth/login
-    vehiculos.js       # CRUD + historial, scoping por empresa
-    movimientos.js     # Ingreso, salida (cálculo), factura/detalle
-    tarifas.js         # Consulta y actualización de vigencias
-    reportes.js        # KPIs, series, tablas, exportaciones a Excel
-    dashboard.js       # Estadísticas del tablero
-    turnos.js          # Apertura/cierre, resumen y detalle
-    empresa.js         # Perfil y configuración de empresa, logo BLOB
+  server.js       Arranque del servidor
+  config/         Conexión a la base de datos
+  middleware/     Validación del token y de permisos
+  routes/         Endpoints de la API
+  utils/          Funciones de apoyo y validación de datos
 public/
-  index.html           # Landing/login
-  admin/*.html         # Vistas de administración/operación
-  js/*.js, css/*.css   # Recursos de UI
-schema.sql             # Esquema, vistas, procedimiento y datos seed
+  index.html      Pantalla de inicio de sesión
+  admin/          Vistas de administración y operación
+  js/, css/       Recursos de la interfaz
+schema.sql        Base de datos: tablas, vistas y datos iniciales
 ```
 
-### Autenticación
-- Login: `POST /api/auth/login`
-  - Body: `{ empresa: <NIT>, usuario: <string>, password: <string> }`
-  - Valida intentos fallidos por ventana de 15 minutos y guarda auditoría en `login_attempts`.
-  - Respuesta exitosa: `{ success, data: { token, ... }, message }`.
-- Para acceder al resto de endpoints, incluya el header `Authorization: Bearer <token>`.
+## API
 
-### Variables de entorno
-- `PORT`: Puerto del servidor (default 3000)
-- `JWT_SECRET`: Secreto para firmar/verificar JWT
-- `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: Conexión a la BD
+Todos los endpoints van bajo `/api` y requieren el token en el header `Authorization: Bearer <token>`, salvo el login.
 
-### Endpoints principales (resumen)
-- Vehículos `/api/vehiculos` (requiere token)
-  - `GET /` listar por empresa
-  - `GET /:id` obtener detalle
-  - `GET /:id/historial` historial de movimientos + pagos
-  - `POST /` crear
-  - `PUT /:id` actualizar
-  - `DELETE /:id` eliminar (si no tiene movimiento activo)
-- Movimientos `/api/movimientos` (requiere token)
-  - `POST /ingreso` registrar ingreso (auto-crea vehículo si no existe)
-  - `POST /salida` registrar salida, calcula total y opcionalmente registra pago
-  - `GET /detalle/:id` detalle
-  - `GET /factura/:id` factura completa (para reimpresión)
-- Tarifas `/api/tarifas` (requiere token; actualización típica para admin)
-  - `GET /current` tarifas activas por tipo
-  - `PUT /` crear nueva vigencia (desactiva la anterior del tipo)
-- Reportes `/api/reportes` (requiere token)
-  - `GET /kpis` KPIs del periodo
-  - `GET /ingresos-por-dia` serie temporal total o por método
-  - `GET /ingresos-por-metodo` distribución por método
-  - `GET /movimientos` tabla paginada/filtrada
-  - `GET /movimientos-ajustados` tabla con columnas por método prorrateadas
-  - `GET /turnos` cierres de turno
-  - `GET /turnos/export/xlsx` y `GET /export/xlsx` exportaciones a Excel
-- Dashboard `/api/dashboard/stats` (requiere token)
-- Turnos `/api/turnos` (requiere token)
-  - `GET /actual` turno abierto
-  - `GET /resumen` totales desde la apertura
-  - `POST /abrir` abrir turno
-  - `POST /cerrar` cerrar turno con totales del usuario
-- Empresa `/api/empresa` (requiere token; admin para cambios)
-  - `GET /me` datos de empresa
-  - `GET /config` configuración operativa
-  - `PUT /` actualizar datos básicos (admin)
-  - `PUT /config` actualizar configuración (admin)
-  - `GET /logo` devuelve logo (BLOB)
-  - `POST /logo` subir logo (admin). Form field: `logo`
+| Recurso | Para qué sirve |
+|---|---|
+| `/api/auth` | Inicio de sesión |
+| `/api/vehiculos` | Registro y consulta de vehículos |
+| `/api/movimientos` | Ingresos, salidas y facturas |
+| `/api/tarifas` | Consulta y actualización de tarifas |
+| `/api/turnos` | Apertura y cierre de caja |
+| `/api/reportes` | Reportes y exportación a Excel |
+| `/api/dashboard` | Estadísticas del tablero |
+| `/api/empresa` | Datos, configuración y logo de la empresa |
 
-### Flujo típico de uso
-1. Ejecutar `schema.sql` en MariaDB/MySQL.
-2. Iniciar el servidor con `.env` configurado.
-3. Ingresar con NIT de la empresa (seed) y usuario `admin`.
-4. Ajustar tarifas según política (minuto/hora/día/mixto).
-5. Registrar ingresos/salidas y pagos.
-6. Consultar dashboard y reportes, exportar a Excel.
-7. Abrir/cerrar turnos para control de caja.
+## Notas
 
-### Scripts npm
-- `npm start`: inicia servidor en `PORT`
-- `npm run dev`: inicia con nodemon
+- Configure un `JWT_SECRET` propio antes de desplegar.
+- Cambie la contraseña del administrador inicial.
+- El logo de la empresa se guarda en la base de datos, no en disco.
 
-### Notas
-- `public/uploads/` (si existía en versiones previas) está ignorado; actualmente el logo se almacena como BLOB.
-- Asegúrese de configurar `JWT_SECRET` en producción.
+## Licencia
 
-### Endurecimiento contra SQLi y cambios recientes
-- Se añadió utilitario `src/utils/sanitize.js` con:
-  - `toSafeInt`, `toSafeLike` (usa `ESCAPE '\\'`), `toSafeTipoVehiculo`
-  - Middlewares `sanitizeReportFilters` y `sanitizeIdParam`
-- Se deshabilitó `multipleStatements` en `src/config/db.js`.
-- Rutas actualizadas para sanitizar filtros/paginación e IDs:
-  - `reportes.js`, `dashboard.js`, `movimientos.js`, `turnos.js`, `vehiculos.js`, `usuarios.js`.
-- Login reforzado: normalización de entradas (trim), validación previa y auditoría.
-- UI: En `public/admin/ingreso-salida.html` el combo de tipo se reemplazó por botones de selección (Carro/Moto/Bici) con diseño moderno y responsivo.
-
-### Licencia
 ISC © Ciscode
-
-
