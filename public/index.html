@@ -97,6 +97,17 @@
                                     ¿Olvidaste tu contraseña? Contacta al administrador
                                 </small>
                             </div>
+
+                            <!-- Acceso de demostración. El bloque queda oculto si el
+                                 servidor no tiene configuradas las variables DEMO_*. -->
+                            <div id="bloqueDemo" class="text-center mt-4 pt-3 border-top" hidden>
+                                <button type="button" id="btnInvitado" class="btn btn-outline-secondary w-100 py-2">
+                                    <i class="fas fa-eye me-2"></i>Entrar como invitado
+                                </button>
+                                <small class="text-muted d-block mt-2">
+                                    Acceso de demostración. Datos ficticios, solo lectura.
+                                </small>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -160,6 +171,59 @@
       } else {
         campo.focus();
       }
+    })();
+    </script>
+
+    <script>
+    /* Acceso de demostración.
+       Pregunta al servidor si el demo está configurado. Si responde 404, el
+       botón nunca se muestra y el login queda igual que antes.
+       Guarda las mismas claves de localStorage que js/login.js para que el
+       resto del panel funcione sin cambios. */
+    (function () {
+      'use strict';
+      var bloque = document.getElementById('bloqueDemo');
+      var boton  = document.getElementById('btnInvitado');
+      if (!bloque || !boton) return;
+
+      fetch('/api/auth/demo')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          if (!res || !res.success) return;
+          bloque.hidden = false;
+
+          boton.addEventListener('click', function () {
+            boton.disabled = true;
+            boton.innerHTML = 'Entrando...';
+
+            fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(res.data)
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (login) {
+              if (!login || !login.success) {
+                throw new Error((login && login.message) || 'Error');
+              }
+              var d = login.data;
+              localStorage.setItem('token', d.token);
+              localStorage.setItem('userName', d.nombre);
+              localStorage.setItem('userRole', d.rol);
+              localStorage.setItem('empresaId', d.id_empresa);
+              localStorage.setItem('empresaNit', res.data.empresa);
+              // El invitado entra al panel de administración: ahí están el
+              // dashboard, los reportes y los turnos, que es lo que se muestra.
+              window.location.href = window.location.origin + '/admin/dashboard';
+            })
+            .catch(function () {
+              boton.disabled = false;
+              boton.innerHTML = '<i class="fas fa-eye me-2"></i>Entrar como invitado';
+              alert('El acceso de demostración no está disponible en este momento.');
+            });
+          });
+        })
+        .catch(function () { /* demo no configurado, el bloque queda oculto */ });
     })();
     </script>
 </body>

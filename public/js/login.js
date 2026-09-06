@@ -141,7 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para redireccionar al dashboard
     function redirectToDashboard(rol) {
         const baseUrl = window.location.origin;
-        const dashboardUrl = rol === 'admin' ? '/admin/dashboard' : '/operador/dashboard';
+        // El invitado de la demo entra al panel de administración: ahí están el
+        // dashboard, los reportes y los turnos, que es lo que la demo muestra.
+        // Sin esto caía en /operador/dashboard, una ruta que server.js no sirve.
+        const dashboardUrl = (rol === 'admin' || rol === 'invitado')
+            ? '/admin/dashboard'
+            : '/operador/dashboard';
         window.location.href = baseUrl + dashboardUrl;
     }
 

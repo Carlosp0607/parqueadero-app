@@ -7,6 +7,9 @@
 // e incluye a la vez `id` e `id_usuario` para no romper consultas existentes.
 const jwt = require('jsonwebtoken');
 
+// Modo demostración: el rol invitado solo puede leer.
+const METODOS_ESCRITURA = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
 function verificarToken(req, res, next) {
     const header = req.headers['authorization'] || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
@@ -28,6 +31,15 @@ function verificarToken(req, res, next) {
 
         if (!identidad.id || !identidad.id_empresa) {
             return res.status(401).json({ success: false, message: 'Token incompleto: vuelva a iniciar sesión' });
+        }
+
+        // El invitado del demo no escribe. Cubre los 12 routers de una vez,
+        // porque todos importan este middleware.
+        if (identidad.rol === 'invitado' && METODOS_ESCRITURA.includes(req.method)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Modo demostración: solo lectura.'
+            });
         }
 
         req.usuario = identidad;

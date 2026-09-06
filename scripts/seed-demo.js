@@ -33,6 +33,11 @@ async function main() {
       throw new Error('La empresa demo no tiene tipos, tarifas o usuarios. Corre 02-empresa-demo.sql primero.');
     }
 
+    // Placas ya existentes en la BD, para no chocar en corridas repetidas
+    const [previas] = await cn.query(
+      'SELECT placa FROM vehiculos WHERE id_empresa = ?', [EMP]);
+    const placasUsadas = new Set(previas.map(p => p.placa));
+
     const uid = usuarios[0].id_usuario;
     const tarifaDe = (idTipo) => tarifas.find(t => t.id_tipo === idTipo).id_tarifa;
     const colores = ['Blanco','Negro','Gris','Rojo','Azul','Plata','Verde'];
@@ -41,9 +46,15 @@ async function main() {
     const vehiculos = [];
     for (let i = 0; i < 30; i++) {
       const tipo = pick(tipos);
-      const placa = tipo.codigo === 'moto' ? placaMoto()
-                  : tipo.codigo === 'bici' ? `BIC${String(i).padStart(3,'0')}`
-                  : placaCarro();
+
+      let placa;
+      do {
+        placa = tipo.codigo === 'moto' ? placaMoto()
+              : tipo.codigo === 'bici' ? `BIC${rnd(900) + 100}`
+              : placaCarro();
+      } while (placasUsadas.has(placa));
+      placasUsadas.add(placa);
+
       const [r] = await cn.query(
         `INSERT INTO vehiculos (id_empresa, placa, id_tipo, color, modelo)
          VALUES (?,?,?,?,?)`,

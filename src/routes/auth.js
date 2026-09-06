@@ -112,6 +112,29 @@ async function estadoSuscripcion(id_empresa) {
     };
 }
 
+// ---------------------------------------------------------------------------
+// Credenciales del demo publico.
+//
+// Se exponen a proposito: el boton "Entrar como invitado" del login las
+// necesita para hacer el POST /login, y el usuario invitado es de SOLO LECTURA
+// (lo bloquea src/middleware/auth.js) sobre una empresa con datos ficticios.
+//
+// Si las variables DEMO_* no estan definidas en el entorno, responde 404 y el
+// boton nunca aparece en el login. Asi el demo se apaga sin tocar codigo.
+// ---------------------------------------------------------------------------
+router.get('/demo', (req, res) => {
+    const { DEMO_NIT, DEMO_USER, DEMO_PASS } = process.env;
+
+    if (!DEMO_NIT || !DEMO_USER || !DEMO_PASS) {
+        return res.status(404).json({ success: false, message: 'Demo no disponible' });
+    }
+
+    res.json({
+        success: true,
+        data: { empresa: DEMO_NIT, usuario: DEMO_USER, password: DEMO_PASS }
+    });
+});
+
 router.post('/login', validateLoginData, async (req, res) => {
     // Normalización de entradas para evitar problemas de espacios/caso
     const empresa = typeof req.body.empresa === 'string' ? req.body.empresa.trim() : req.body.empresa;

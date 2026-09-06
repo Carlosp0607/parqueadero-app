@@ -1,4 +1,4 @@
-USE parqueadero;
+
 
 -- Empresa demo. NIT distinto al de "Parqueadero Central" a propósito.
 INSERT INTO empresas (nombre, nit, direccion, telefono, email, plan)
@@ -32,6 +32,6 @@ FROM tipos_vehiculos WHERE id_empresa = @emp;
 
 -- Usuario invitado. Reemplaza HASH_AQUI (ver comando abajo).
 INSERT INTO usuarios (id_empresa, nombre, usuario_login, `contraseña`, rol)
-VALUES (@emp, 'Invitado', 'invitado', 'HASH_AQUI', 'invitado');
+VALUES (@emp, 'Invitado', 'invitado', '$2a$10$khMa2e7THvKTVLPRU1A8vO5Hwj0aM5pSc7LFRf0ihbgSUtyumrh9i', 'invitado');
 
 SELECT @emp AS id_empresa_demo;

@@ -1,6 +1,6 @@
 -- Migración: habilita el rol invitado.
 -- Correr UNA sola vez sobre una BD existente. No sustituye a schema.sql.
-USE parqueadero;
+
 
 ALTER TABLE usuarios DROP CONSTRAINT chk_rol;
 
