@@ -140,4 +140,4 @@ Todos los endpoints van bajo `/api` y requieren el token en el header `Authoriza
 
 ## Licencia
 
-ISC © Ciscode
+ISC © Carlos Daniel Polanco
