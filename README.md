@@ -20,7 +20,7 @@ Está pensada para atender varias empresas desde una sola instalación: cada emp
 - **Mensualidades.** Suscripciones por vehículo con su propio registro de pagos.
 - **Reportes.** Ingresos por día y por método, tablas filtrables y exportación a Excel.
 - **Usuarios y roles.** Administrador y operador, con permisos distintos.
-- **Multi-empresa.** Toda consulta está filtrada por empresa; ninguna empresa ve datos de otra.
+- **Multi-empresa.** Toda consulta está filtrada por empresa; ninguna empresa ve datos de otra. Cubierto por pruebas automatizadas, ver [Pruebas](#pruebas).
 - **Seguridad.** Control de intentos de login y consultas parametrizadas contra inyección SQL.
 
 ## Requisitos
@@ -64,6 +64,31 @@ npm start       # producción
 
 La aplicación queda en `http://localhost:3000`.
 
+## Pruebas
+
+Trece pruebas automatizadas con el runner nativo de Node. No requieren base de datos ni dependencias adicionales.
+
+```
+npm test
+```
+
+**Middleware de autenticación** — `tests/auth.test.js`
+
+| Prueba | Qué verifica |
+|---|---|
+| Sin token se rechaza con 401 | Ninguna ruta protegida queda expuesta |
+| Un token firmado con otra clave se rechaza | La firma JWT se valida de verdad |
+| **Un token sin `id_empresa` no puede avanzar** | El aislamiento entre empresas |
+| El `id_empresa` queda disponible para las consultas | Toda consulta sabe a qué empresa pertenece |
+| El invitado consulta pero no escribe | Modo demostración, en los cuatro métodos de escritura |
+| `esAdmin` bloquea a quien no es administrador | Separación de roles |
+
+La tercera es la central. El sistema no deja que una petición llegue a la capa de datos sin saber a qué empresa pertenece, y esa es la garantía de que ninguna consulta puede devolver registros de otra. Si alguien quita esa validación, la prueba falla.
+
+**Utilidades del tablero** — `tests/dashboardUtils.test.js`
+
+Normalización de los conteos por tipo de vehículo, para que `Carro` y `carro`, o `Bicicleta` y `bici`, se agrupen como un solo tipo en las estadísticas.
+
 ## Cómo se usa
 
 1. Iniciar sesión con el NIT de la empresa, usuario y contraseña.
@@ -86,6 +111,9 @@ public/
   index.html      Pantalla de inicio de sesión
   admin/          Vistas de administración y operación
   js/, css/       Recursos de la interfaz
+tests/
+  auth.test.js            Autenticación y aislamiento por empresa
+  dashboardUtils.test.js  Normalización de conteos del tablero
 schema.sql        Base de datos: tablas, vistas y datos iniciales
 ```
 
