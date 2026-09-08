@@ -371,25 +371,16 @@ function renderTicketSalida(salida, empresa){
             <hr/>
             <div><strong>SALIDA</strong></div>
         </div>`;
-    // Pie de ticket con crédito y enlace/ícono de YouTube de Ciscode
-    const ciscodeFooter = `
-        <hr/>
-        <div style="text-align:center;margin-top:6px">
-            <div>Desarrollado por <strong>Ciscode</strong></div>
-            <div>
-                <a href="https://ciscode.co" target="_blank" style="text-decoration:none;color:#000">ciscode.co</a>
-                &nbsp;|&nbsp;
-                <a href="https://www.youtube.com/@Ciscode" target="_blank" aria-label="YouTube Ciscode" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:#000">
-                    <span>
-                        <svg width="18" height="12" viewBox="0 0 24 17" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path d="M23.5 2.6a3 3 0 0 0-2.1-2.1C19.5 0 12 0 12 0s-7.5 0-9.4.5A3 3 0 0 0 .5 2.6 31 31 0 0 0 0 8.5a31 31 0 0 0 .5 5.9 3 3 0 0 0 2.1 2.1C4.5 17 12 17 12 17s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-5.9 31 31 0 0 0-.5-5.9z" fill="#FF0000"/>
-                            <path d="M9.75 12.25V4.75L15.5 8.5l-5.75 3.75z" fill="#fff"/>
-                        </svg>
-                    </span>
-                    <span style="font-size:10px">YouTube</span>
-                </a>
-            </div>
-        </div>`;
+    // Pie de ticket con credito del desarrollador
+    const pieTicket = `
+                <hr/>
+                <div style="text-align:center;margin-top:6px">
+                    <div>Desarrollado por <strong>Carlos Daniel Polanco</strong></div>
+                    <div>
+                        <a href="https://cdp-dev-landing-page.vercel.app" target="_blank" style="text-decoration:none;color:#000">cdp-dev-landing-page.vercel.app</a>
+                    </div>
+                </div>
+            `;
     return `${header}
         <div>Movimiento: <strong>#${salida.movimientoId}</strong></div>
         <div>Placa: <strong>${salida.placa}</strong></div>
@@ -406,7 +397,7 @@ function renderTicketSalida(salida, empresa){
         <div>Total a pagar: <strong>${formatCurrency(salida.total)}</strong></div>
         <div>Atendido por: ${localStorage.getItem('userName')||''}</div>
         <div>Fecha impresión: ${new Date().toLocaleString('es-CO')}</div>
-        ${ciscodeFooter}`;
+        ${pieTicket}`;
 }
 
 // Ventana de impresión tipo ticket con QR opcional

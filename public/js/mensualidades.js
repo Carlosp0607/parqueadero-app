@@ -468,15 +468,14 @@ function renderReciboMensualidad(mens, pago, empresa) {
         <div>Fecha: ${fechaMostrar}</div>
         <div>Atendido por: ${localStorage.getItem('userName') || ''}</div>`;
     const footer = `
-        <hr/>
-        <div style="text-align:center;margin-top:6px">
-            <div>Desarrollado por <strong>Ciscode</strong></div>
-            <div>
-                <a href="https://ciscodedev.netlify.app" target="_blank" style="text-decoration:none;color:#000">ciscode.co</a>
-                &nbsp;|&nbsp;
-                <a href="https://www.youtube.com/@Ciscode" target="_blank" style="text-decoration:none;color:#000">YouTube</a>
-            </div>
-        </div>`;
+                <hr/>
+                <div style="text-align:center;margin-top:6px">
+                    <div>Desarrollado por <strong>Carlos Daniel Polanco</strong></div>
+                    <div>
+                        <a href="https://cdp-dev-landing-page.vercel.app" target="_blank" style="text-decoration:none;color:#000">cdp-dev-landing-page.vercel.app</a>
+                    </div>
+                </div>
+            `;
     return header + body + footer;
 }
 
@@ -498,7 +497,7 @@ function imprimirHTML(html, titulo, anchoMM, qrPayload) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
     <script>(function(){
         try{
-            new QRCode(document.getElementById('qrcode'), {text:'https://ciscodedev.netlify.app/',width:96,height:96});
+            new QRCode(document.getElementById('qrcode'), {text:'https://cdp-dev-landing-page.vercel.app/',width:96,height:96});
         }catch(e){}
         setTimeout(function(){ window.print(); window.close(); }, 400);
     })();<\/script>

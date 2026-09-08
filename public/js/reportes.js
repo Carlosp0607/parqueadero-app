@@ -479,7 +479,7 @@ window.reimprimirSalida = async function(idMovimiento){
             <style>@page{ size:80mm auto; margin: 3mm } body{ width:80mm; font-family: Arial, sans-serif; font-size:11px; margin:0 } .wrap{ padding:4mm } hr{ border:none; border-top:1px dashed #999; margin:6px 0 } img{ display:block; margin:0 auto 6px; max-width:100% } .qr{ display:flex; justify-content:center; margin-top:6px }</style>
             </head><body><div class="wrap">${header+body}<div class="qr"><div id="qrcode"></div></div></div>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
-            <script>(function(){ try{ new QRCode(document.getElementById('qrcode'), {text:'https://ciscodedev.netlify.app/', width:96, height:96}); }catch(e){} setTimeout(function(){ window.print(); window.close(); }, 400); })();<\/script>
+            <script>(function(){ try{ new QRCode(document.getElementById('qrcode'), {text:'https://cdp-dev-landing-page.vercel.app/', width:96, height:96}); }catch(e){} setTimeout(function(){ window.print(); window.close(); }, 400); })();<\/script>
             </body></html>`;
         printWin.document.write(doc);
         printWin.document.close();
