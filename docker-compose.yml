@@ -1,0 +1,50 @@
+services:
+
+  db:
+    image: mysql:8
+    container_name: parqueadero-db
+    restart: unless-stopped
+    # Valores fijos a proposito: este compose es solo para desarrollo local.
+    # No se usan variables ${...} porque docker compose las tomaria del .env
+    # del proyecto, que apunta a la base de produccion.
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: parqueadero
+      MYSQL_USER: parqueadero_app
+      MYSQL_PASSWORD: parqueadero
+    ports:
+      - "3307:3306"
+    volumes:
+      - datos_mysql:/var/lib/mysql
+    healthcheck:
+      # Se prueba el puerto 3306 de red, no el socket local: durante la
+      # inicializacion MySQL responde por socket pero aun no acepta
+      # conexiones TCP, y la app arrancaria contra una base que no esta lista.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-P", "3306", "--protocol=TCP", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  app:
+    build: .
+    container_name: parqueadero-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # env_file no se declara: la app recibe solo estas variables,
+    # nunca las credenciales reales del .env.
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: parqueadero
+      DB_USER: parqueadero_app
+      DB_PASSWORD: parqueadero
+      JWT_SECRET: secreto-solo-para-desarrollo-local
+    ports:
+      - "3000:3000"
+
+volumes:
+  datos_mysql:
