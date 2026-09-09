@@ -1,6 +1,6 @@
 /* ============================================================
    public/js/menu.js
-   Menu lateral unico de ParkSystem.
+   Menu lateral unico de Don Parqueo.
    Reescribe el sidebar de la pagina donde se cargue.
    Para cambiar el menu del sistema entero, se edita SOLO este archivo.
 
@@ -171,7 +171,7 @@
         '<div class="logo-container">' +
           '<div class="logo-circle"><span class="logo-text">PS</span></div>' +
         '</div>' +
-        '<h5 class="mt-3 text-white">ParkSystem</h5>' +
+        '<h5 class="mt-3 text-white">Don Parqueo</h5>' +
       '</div>' +
       '<nav class="sidebar-nav"><ul class="nav flex-column">' + li + '</ul></nav>' +
       '<div class="sidebar-footer">' +

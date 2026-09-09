@@ -94,7 +94,7 @@ Implementados desde cero contra `schema.sql`:
 ## Estado verificado
 
 - `node --check` limpio en los 24 archivos de `src/`.
-- El servidor arranca: `ParkSystem corriendo en puerto 3000`.
+- El servidor arranca: `Don Parqueo corriendo en puerto 3000`.
 - `GET /` → 200 · `GET /admin/dashboard` → 200 · `GET /api/nada` → 404 JSON · `GET /api/tarifas` sin token → 401 JSON.
 - `npm test` → 2 pruebas en verde.
 

@@ -2,7 +2,7 @@
 // Panel del dueño del SaaS
 //
 // Esto NO es parte del sistema que usa un parqueadero. Es la vista del dueño
-// de ParkSystem para administrar a sus clientes: quien esta al dia, quien se
+// de Don Parqueo para administrar a sus clientes: quien esta al dia, quien se
 // vencio, y cuantos van del tope de 15.
 //
 // Va aparte a proposito. Los roles de la tabla usuarios son 'admin' y

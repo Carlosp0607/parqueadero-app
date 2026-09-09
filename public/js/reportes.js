@@ -561,7 +561,7 @@ async function exportarPDF(){
         doc.setTextColor(255,255,255);
         doc.setFont('helvetica','bold');
         doc.setFontSize(16);
-        doc.text('Reporte de Movimientos - ParkSystem', 24, 38);
+        doc.text('Reporte de Movimientos - Don Parqueo', 24, 38);
         doc.setFontSize(10);
         doc.text(`Empresa: ${empresa}`, doc.internal.pageSize.getWidth()-200, 24);
         doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, doc.internal.pageSize.getWidth()-200, 40);
@@ -748,7 +748,7 @@ async function buildKpiSheetData(){
     if (!res.ok) throw new Error(j.message||'Error KPIs');
     const d = j.data || {};
     return [
-        ['Reporte de Movimientos - ParkSystem',''],
+        ['Reporte de Movimientos - Don Parqueo',''],
         ['Rango', `${desde} a ${hasta}`],
         ['Ingresos', String(formatCurrency(d.ingresos||0))],
         ['Tickets', String(d.tickets||0)],
