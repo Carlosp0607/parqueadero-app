@@ -10,6 +10,7 @@ Está pensada para atender varias empresas desde una sola instalación: cada emp
 - **MySQL** — base de datos (en producción, alojada en Aiven)
 - **JWT** — inicio de sesión y control de acceso
 - **HTML, CSS y JavaScript** — interfaz, servida desde `public/`
+- **Docker** — entorno de desarrollo reproducible con `docker compose`
 
 ## Qué hace
 
@@ -23,12 +24,31 @@ Está pensada para atender varias empresas desde una sola instalación: cada emp
 - **Multi-empresa.** Toda consulta está filtrada por empresa; ninguna empresa ve datos de otra. Cubierto por pruebas automatizadas, ver [Pruebas](#pruebas).
 - **Seguridad.** Control de intentos de login y consultas parametrizadas contra inyección SQL.
 
-## Requisitos
+## Ejecución con Docker
 
-- Node.js 18 o superior
-- MySQL 8 o superior
+La forma más rápida de levantar el proyecto completo, aplicación y base de datos, sin instalar Node ni MySQL:
 
-## Instalación
+```
+docker compose up
+```
+
+La aplicación queda en `http://localhost:3000`. MySQL se inicializa solo y el esquema se aplica en el primer arranque.
+
+Acceso inicial: NIT `900123456-7`, usuario `admin`, contraseña `admin123`.
+
+Para detener y borrar los datos:
+
+```
+docker compose down -v
+```
+
+Los valores de conexión están fijos en `docker-compose.yml` a propósito: ese archivo es solo para desarrollo local y no toma nada del `.env` de producción. La aplicación espera a que MySQL acepte conexiones TCP antes de arrancar, no solo a que el contenedor exista.
+
+## Instalación manual
+
+Si prefiere ejecutar sin contenedores.
+
+**Requisitos:** Node.js 18 o superior, MySQL 8 o superior.
 
 1. Clonar el repositorio e instalar dependencias:
 
@@ -101,6 +121,8 @@ Normalización de los conteos por tipo de vehículo, para que `Carro` y `carro`,
 ## Estructura
 
 ```
+Dockerfile          Imagen de la aplicación
+docker-compose.yml  Aplicación + MySQL para desarrollo local
 src/
   server.js       Arranque del servidor
   config/         Conexión a la base de datos
