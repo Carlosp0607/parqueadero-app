@@ -1,4 +1,4 @@
-# Sistema de Parqueadero (Multi-empresa)
+# Don Parqueo — Sistema multi-empresa para parqueaderos
 
 Aplicación web para administrar parqueaderos. Registra entradas y salidas de vehículos, calcula el cobro según la tarifa, controla los turnos de caja y genera reportes de ingresos.
 
