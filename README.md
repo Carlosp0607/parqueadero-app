@@ -1,4 +1,4 @@
-# Don Parqueo — Sistema multi-empresa para parqueaderos
+# Don Parqueo: sistema multi-empresa para parqueaderos
 
 Aplicación web para administrar parqueaderos. Registra entradas y salidas de vehículos, calcula el cobro según la tarifa, controla los turnos de caja y genera reportes de ingresos.
 
@@ -6,11 +6,11 @@ Está pensada para atender varias empresas desde una sola instalación: cada emp
 
 ## Tecnologías
 
-- **Node.js + Express** — servidor y API
-- **MySQL** — base de datos (en producción, alojada en Aiven)
-- **JWT** — inicio de sesión y control de acceso
-- **HTML, CSS y JavaScript** — interfaz, servida desde `public/`
-- **Docker** — entorno de desarrollo reproducible con `docker compose`
+- **Node.js + Express**: servidor y API
+- **MySQL**: base de datos (en producción, alojada en Aiven)
+- **JWT**: inicio de sesión y control de acceso
+- **HTML, CSS y JavaScript**: interfaz, servida desde `public/`
+- **Docker**: entorno de desarrollo reproducible con `docker compose`
 
 ## Qué hace
 
@@ -34,7 +34,7 @@ docker compose up
 
 La aplicación queda en `http://localhost:3000`. MySQL se inicializa solo y el esquema se aplica en el primer arranque.
 
-El esquema crea una empresa y un usuario administrador de prueba, solo para desarrollo local. Para explorar la demo en línea sin credenciales, usa el botón de modo invitado en la pantalla de inicio.
+El esquema crea una empresa y un usuario administrador de prueba, solo para desarrollo local. Para explorar la demo en línea sin credenciales, use el botón de modo invitado en la pantalla de inicio.
 
 Para detener y borrar los datos:
 
@@ -53,6 +53,8 @@ Si prefiere ejecutar sin contenedores.
 1. Clonar el repositorio e instalar dependencias:
 
 ```
+git clone https://github.com/Carlosp0607/parqueadero-app.git
+cd parqueadero-app
 npm install
 ```
 
@@ -92,7 +94,7 @@ Trece pruebas automatizadas con el runner nativo de Node. No requieren base de d
 npm test
 ```
 
-**Middleware de autenticación** — `tests/auth.test.js`
+**Middleware de autenticación**: `tests/auth.test.js`
 
 | Prueba | Qué verifica |
 |---|---|
@@ -105,7 +107,7 @@ npm test
 
 La tercera es la central. El sistema no deja que una petición llegue a la capa de datos sin saber a qué empresa pertenece, y esa es la garantía de que ninguna consulta puede devolver registros de otra. Si alguien quita esa validación, la prueba falla.
 
-**Utilidades del tablero** — `tests/dashboardUtils.test.js`
+**Utilidades del tablero**: `tests/dashboardUtils.test.js`
 
 Normalización de los conteos por tipo de vehículo, para que `Carro` y `carro`, o `Bicicleta` y `bici`, se agrupen como un solo tipo en las estadísticas.
 
