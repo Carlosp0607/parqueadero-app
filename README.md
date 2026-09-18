@@ -34,7 +34,7 @@ docker compose up
 
 La aplicación queda en `http://localhost:3000`. MySQL se inicializa solo y el esquema se aplica en el primer arranque.
 
-Acceso inicial: NIT `900123456-7`, usuario `admin`, contraseña `admin123`.
+El esquema crea una empresa y un usuario administrador de prueba, solo para desarrollo local. Para explorar la demo en línea sin credenciales, usa el botón de modo invitado en la pantalla de inicio.
 
 Para detener y borrar los datos:
 
